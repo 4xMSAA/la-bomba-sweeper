@@ -1,0 +1,30 @@
+{
+  "name": "minesweeper",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$ignoreUnknownInstances": true,
+      "Source": {
+        "$path": "shared",
+        "Common": {
+          "$path": "common"
+        },
+        "GameEnum": {
+          "$path": "enums"
+        }
+      }
+    },
+    "ServerScriptService": {
+      "Source": {
+        "$path": "server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Source": {
+          "$path": "client"
+        }
+      }
+    }
+  }
+}

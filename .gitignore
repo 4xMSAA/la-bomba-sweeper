@@ -1,0 +1,6 @@
+*.rbxl
+*.rbxlx
+*.rbxmx
+*.lock
+.vscode
+*.code-workspace
