@@ -2,9 +2,10 @@ local TableUtils = require(shared.Common.TableUtils)
 
 ---@class PacketType
 local GameEnum = {
-    {"Start", "Send starting parameters"},
+    {"Begin", "Send starting parameters"},
     {"InProgress", ""},
-    {"End", ""}
+    {"GameOver", ""},
+    {"CleanUp", ""}
 }
 
 return TableUtils.toEnumList(script.Parent.Name, GameEnum)

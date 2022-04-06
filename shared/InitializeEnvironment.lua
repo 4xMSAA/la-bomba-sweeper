@@ -48,13 +48,6 @@ _G.Path = {}
 -- both client and server
 _G.Path.Remotes = createSharedFolder("Remotes", shared.Storage)
 
-_G.Path.Entities = createSharedFolder("Entities", _G.Workspace)
-_G.Path.Players = createSharedFolder("Players", _G.Workspace)
-
-_G.Path.Hitboxes = createSharedFolder("Hitboxes", _G.Workspace)
-_G.Path.RayIgnore = createSharedFolder("RayIgnore", _G.Workspace)
-_G.Path.Collisions = createSharedFolder("Collisions", _G.Workspace)
-
 if RunService:IsServer() then
     -- create by server
     _G.create("RemoteEvent", {Name = "Signal", Parent = _G.Path.Remotes})
@@ -63,7 +56,6 @@ else
     -- client specific paths
     _G.Path.FX = _G.create("Folder", {Name = "FX", Parent = _G.Workspace})
     _G.Path.Sounds = _G.create("Folder", {Name = "Sounds", Parent = _G.Workspace})
-    _G.Path.ClientViewmodel = _G.create("Folder", {Name = "ViewModel", Parent = workspace.CurrentCamera})
 end
 
 return true

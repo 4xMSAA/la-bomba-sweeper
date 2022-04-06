@@ -96,7 +96,7 @@ end
 
 ---
 ---@param player userdata
-function ClientManager:getClientByPlayer(player)
+function ClientManager:getClientBy(player)
     for _, client in pairs(self.Clients) do
         if client.Instance == player then
             return client
@@ -159,7 +159,7 @@ end
 ---
 ---@param player userdata
 function ClientManager:removeClientByPlayer(player)
-    local client = self:getClientByPlayer(player)
+    local client = self:getClientBy(player)
     self:removeClient(client)
     return client
 end
