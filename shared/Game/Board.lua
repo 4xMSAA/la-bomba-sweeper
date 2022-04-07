@@ -151,27 +151,31 @@ function Board:serialize(noMines)
 end
 
 function Board:renderCreate(renderOptions)
-    renderOptions = renderOptions or DEFAULT_RENDER_OPTIONS
-    local genOptions = self.Options
     assert(_G.Client, "only client can render the board")
 
+    if self._render.model then
+        for _, part in pairs(self._render.parts) do
+            part:Destroy()
+        end
+        self._render.model:Destroy()
+    end
+
+    self._render.parts = {}
     self._render.model = Instance.new("Model")
+    renderOptions = renderOptions or DEFAULT_RENDER_OPTIONS
+    local genOptions = self.Options
     local CFoffset = CFrame.new(
         -genOptions.Size.X / 2 * renderOptions.Size.X / 2,
         0,
         -genOptions.Size.Z / 2 * renderOptions.Size.Z / 2
     ) * CFrame.new(renderOptions.Pivot)
 
-    self._render.parts = {}
     for x = 0, genOptions.Size.X - 1 do
         self._render.parts[x] = {}
         for y = 0, genOptions.Size.Y - 1 do
-            local i = x*y + 1 
-
             local p = shared.Assets.GridPart
             p.Material = Enum.Material.SmoothPlastic
-            p.Color = i % 2 == 0 and genOptions.PartColor.Primary or genOptions.PartColor.Secondary
-            p.Size = genOptions.Size
+            p.Size = renderOptions.Size
             p.CFrame = CFoffset * CFrame.new(x, 0, y)
             p.Parent = self._render.model
             
@@ -188,6 +192,8 @@ function Board:renderCreate(renderOptions)
 end
 
 function Board:render(renderOptions)
+    renderOptions = renderOptions or DEFAULT_RENDER_OPTIONS
+
     if not self._render.model then
         self:renderCreate(renderOptions)
     end
@@ -198,12 +204,15 @@ function Board:render(renderOptions)
             local i = x*y + 1 
             local number = self.Discovered[x][y]
             part.Label.Text = number > 0 and number or ""
-            part.Color = 
+            part.Instance.Color = 
                 number > 0 and renderOptions.PartColor.DiscoveredNearboy or 
                 number == 0 and renderOptions.PartColor.DiscoveredZero or 
-                i % 2 == 0 and genOptions.PartColor.Primary or genOptions.PartColor.Secondary
-
+                i % 2 == 0 and renderOptions.PartColor.Primary or renderOptions.PartColor.Secondary
         end
     end
     
+end
+
+function Board:postProcess(renderOptions)
+
 end
