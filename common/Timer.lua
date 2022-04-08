@@ -24,7 +24,8 @@ end
 function Timer:tick(dt)
     self._currentTimePassed = self._currentTimePassed + dt
     if self._currentTimePassed >= self.Interval then
-        return math.floor(self._currentTimePassed/self.Interval)
+        self._currentTimePassed = math.max(0, self._currentTimePassed - self.Interval)
+        return true
     end
     return false
 end

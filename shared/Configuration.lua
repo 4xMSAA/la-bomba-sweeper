@@ -1,5 +1,17 @@
 return {
-    LOG_LEVEL = 1,
+    LOG_LEVEL = 3,
+    
+    LOADING = {
+        TIMEOUT = 30
+    },
+    
+    CAMERA = {
+        LIMIT_YAW = 90
+    },
+    
+    TIMERS = {
+        CURSOR_UPDATE = 5
+    },
     
     BOARD = {
         RENDER = {

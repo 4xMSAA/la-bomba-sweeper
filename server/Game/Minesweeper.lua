@@ -1,15 +1,17 @@
-local DEFAULT_OPTIONS = _G.CONFIGURATION.GENERATION
-
 local Maid = require(shared.Common.Maid)
+local NetworkLib = require(shared.Common.NetworkLib)
+local GameEnum = shared.GameEnum
+local log, logwarn = require(shared.Common.Log)(script:GetFullName())
 
 local MinesweeperNetworker = require(_G.Server.Game.MinesweeperNetworker)
+local Board = require(shared.Game.Board)
 
 ---A class description
 ---@class Minesweeper
 local Minesweeper = {}
 Minesweeper.__index = Minesweeper
 
-function Minesweeper.new(args)
+function Minesweeper.new(server, options)
     local self = {
         ClientManager = server.ClientManager,
 
@@ -43,21 +45,39 @@ function Minesweeper:gameBegin()
     
     self.Board = Board.new()
 
-    NetworkLib:send(GameEnum.GameState.Begin, {Players = self.Playing})
+    NetworkLib:send(GameEnum.PacketType.GameState, GameEnum.GameState.Begin, {Players = self.Playing})
     self.GameState = GameEnum.GameState.InProgress
 
 end
 
 function Minesweeper:gameEnd()
     self.Playing = {}
+    self.Board:destroy()
 
-    NetworkLib:send(GameEnum.GameState.CleanUp, {Mines = self.Board.Mines})
+    NetworkLib:send(GameEnum.PacketType.GameState, GameEnum.GameState.CleanUp, {Mines = self.Board.Mines})
 end
 
 function Minesweeper:adhocClient(client)
-    NetworkLib:sendTo(client, GameEnum.GameState.InProgress, {Board = self.Board:serialize(true), Players = self.Playing})
+    log(1, client, "joined adhoc")
+    NetworkLib:sendTo(
+        client, 
+        GameEnum.PacketType.GameState,
+        GameEnum.GameState.InProgress, 
+        {Board = self.Board:serialize(true), Players = self.Playing}
+    )
 end
 
 function Minesweeper:route(packet, player, ...)
     MinesweeperNetworker[packet](self, player, ...)
+end
+
+return function(server, options)
+    local game = Minesweeper.new(server, options)
+    
+    game.ClientManager.ClientAdded:connect(function(client)
+        if game.GameState == GameEnum.GameState.InProgress then
+            game:adhocClient(client)
+        end
+    end)
+    game:gameBegin()
 end

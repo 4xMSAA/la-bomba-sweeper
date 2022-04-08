@@ -30,7 +30,7 @@ end
 
 function Server:start(module, options)
     self.ClientManager:init()
-    self._running = require(module)(server, options)
+    self._running = require(module)(self, options)
 
     return self
 end

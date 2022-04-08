@@ -1,5 +1,5 @@
-local DEFAULT_RENDER_OPTIONS = _G.CONFIGURATION.BOARD.RENDER
-local DEFAULT_GENERATE_OPTIONS = _G.CONFIGURATION.BOARD.GENERATION
+local DEFAULT_RENDER_OPTIONS = _G.BOARD.RENDER
+local DEFAULT_GENERATE_OPTIONS = _G.BOARD.GENERATION
 
 local Maid = require(shared.Common.Maid)
 
@@ -162,7 +162,7 @@ function Board:renderCreate(renderOptions)
 
     self._render.parts = {}
     self._render.model = Instance.new("Model")
-    renderOptions = renderOptions or DEFAULT_RENDER_OPTIONS
+    renderOptions = renderOptions or self.RenderOptions
     local genOptions = self.Options
     local CFoffset = CFrame.new(
         -genOptions.Size.X / 2 * renderOptions.Size.X / 2,
@@ -191,8 +191,12 @@ function Board:renderCreate(renderOptions)
     end
 end
 
+function Board:getRenderModel()
+    return self._render.model
+end
+
 function Board:render(renderOptions)
-    renderOptions = renderOptions or DEFAULT_RENDER_OPTIONS
+    renderOptions = renderOptions or self.RenderOptions
 
     if not self._render.model then
         self:renderCreate(renderOptions)
@@ -216,3 +220,5 @@ end
 function Board:postProcess(renderOptions)
 
 end
+
+return Board

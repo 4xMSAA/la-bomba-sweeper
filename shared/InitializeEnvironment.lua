@@ -17,9 +17,7 @@ end
 
 if RunService:IsServer() then
     _G.Storage = game:GetService("ServerStorage")
-    _G.Source = game:GetService("ServerScriptService"):WaitForChild("Source")
     _G.Assets = _G.Storage:WaitForChild("Assets")
-    _G.GameModes = game:GetService("ServerScriptService"):WaitForChild("GameModes")
 end
 
 shared.Storage = game:GetService("ReplicatedStorage")
