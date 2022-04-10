@@ -1,30 +1,44 @@
+local NetworkLib = require(shared.Common.NetworkLib)
 local GameEnum = shared.GameEnum
 
-local RESPONSES = {
-    [GameEnum.PacketType.SetFlagState] = function(game, client, state, x, y)
-        if not game.Playing[client] then return end
+local function getClientFromList(clients, targetClient)
+    for _, client in pairs(clients) do
+        if client == targetClient then
+            return true
+        end
+    end
 
-        game.Board:setFlagBy(player, x, y)
-        NetworkLib:send(GameEnum.PacketType.SetFlagState, client, state, x, y)
+    return false
+end
+
+local RESPONSES = {
+    [GameEnum.PacketType.SetFlagState] = function(game, client, x, y, state)
+        if not getClientFromList(game.Playing, client) then return end
+        assert(type(state) == "boolean")
+
+        game.Board:setFlag(x, y, state, client.Instance)
+        NetworkLib:send(GameEnum.PacketType.SetFlagState, x, y, state, client.Instance)
     end,
 
-    [GameEnum.PacketType.CursorUpdate] = function(game, client, x, y, z)
-        if not game.Playing[client] then return end
+    [GameEnum.PacketType.CursorUpdate] = function(game, client, x, z)
+        if not getClientFromList(game.Playing, client) then return end
 
-        local cursor = game.Cursors[client]
-        cursor.X = x
-        cursor.Y = y
-        cursor.Z = z
+        -- local cursor = game.Cursors[client]
+        -- cursor.X = x
+        -- cursor.Y = y
+        -- cursor.Z = z
         
-        NetworkLib:send(GameEnum.PacketType.CursorUpdate, player, x, y, z)
+        NetworkLib:send(GameEnum.PacketType.CursorUpdate, client, x, z)
     end,
     
     [GameEnum.PacketType.Discover] = function(game, client, x, y)
-        if not game.Playing[client] then return end
+        if not getClientFromList(game.Playing, client) then return end
         
         local response = game.Board:discover(x, y)
         if response == GameEnum.Discovery.Mine then
-            game:gameEnd()
+            game:gameEnd({X = x, Y = y})
+        else
+            NetworkLib:send(GameEnum.PacketType.Discover, game.Board.Discovered)
         end
     end,
 }

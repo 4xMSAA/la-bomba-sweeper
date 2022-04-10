@@ -6,6 +6,17 @@ local log, logwarn = require(shared.Common.Log)(script:GetFullName())
 local MinesweeperNetworker = require(_G.Server.Game.MinesweeperNetworker)
 local Board = require(shared.Game.Board)
 
+
+local function clientsToPlayers(clients)
+    local result = {}
+
+    for i, client in pairs(clients) do
+        result[i] = client.Instance
+    end
+    
+    return result
+end
+
 ---A class description
 ---@class Minesweeper
 local Minesweeper = {}
@@ -20,7 +31,7 @@ function Minesweeper.new(server, options)
         
         Board = nil,
 
-        GameState = GameEnum.GameState.Begin
+        GameState = GameEnum.GameState.GameOver
     }
 
     local function routeWrapper(player, packetType, ...)
@@ -44,17 +55,23 @@ function Minesweeper:gameBegin()
     end
     
     self.Board = Board.new()
+    self.Board:generate()
 
-    NetworkLib:send(GameEnum.PacketType.GameState, GameEnum.GameState.Begin, {Players = self.Playing})
+    NetworkLib:send(GameEnum.PacketType.GameState, GameEnum.GameState.Begin.ID, {Players = clientsToPlayers(self.Playing)})
     self.GameState = GameEnum.GameState.InProgress
 
 end
 
-function Minesweeper:gameEnd()
+function Minesweeper:gameEnd(explosionAt)
     self.Playing = {}
-    self.Board:destroy()
+    self.GameState = GameEnum.GameState.CleanUp
 
-    NetworkLib:send(GameEnum.PacketType.GameState, GameEnum.GameState.CleanUp, {Mines = self.Board.Mines})
+    NetworkLib:send(GameEnum.PacketType.GameState, GameEnum.GameState.GameOver.ID, {ExplosionAt = explosionAt, Mines = self.Board.Mines})
+    self.Board:destroy()
+    
+    task.wait(6)
+    
+    self.GameState = GameEnum.GameState.GameOver
 end
 
 function Minesweeper:adhocClient(client)
@@ -62,13 +79,15 @@ function Minesweeper:adhocClient(client)
     NetworkLib:sendTo(
         client, 
         GameEnum.PacketType.GameState,
-        GameEnum.GameState.InProgress, 
-        {Board = self.Board:serialize(true), Players = self.Playing}
+        GameEnum.GameState.InProgress.ID, 
+        {Board = self.Board:serialize(true), Players = clientsToPlayers(self.Playing)}
     )
 end
 
 function Minesweeper:route(packet, player, ...)
-    MinesweeperNetworker[packet](self, player, ...)
+    if MinesweeperNetworker[packet] then
+        MinesweeperNetworker[packet](self, player, ...)
+    end
 end
 
 return function(server, options)
@@ -79,5 +98,12 @@ return function(server, options)
             game:adhocClient(client)
         end
     end)
-    game:gameBegin()
+    
+    while task.wait(1) do
+        if game.GameState == GameEnum.GameState.GameOver then
+            if #game.ClientManager:getClients() > 0 then
+                game:gameBegin()
+            end
+        end
+    end
 end

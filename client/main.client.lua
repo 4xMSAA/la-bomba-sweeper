@@ -1,9 +1,12 @@
 _G.Client = script.Parent
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 require(ReplicatedStorage.Source:WaitForChild("InitializeEnvironment"))
 
 local Maid = require(shared.Common.Maid)
+local NetworkLib = require(shared.Common.NetworkLib)
+local GameEnum = shared.GameEnum
 
 
 ---Client instance hosting a bunch of things...
@@ -13,6 +16,8 @@ Client.__index = Client
 
 function Client.new()
     local self = {
+        Mouse = Players.LocalPlayer:GetMouse(),
+
         Paused = false
     }
 
@@ -25,6 +30,7 @@ end
 function Client:start(module, options)
     self._running = require(module)(self, options)
 
+    NetworkLib:send(GameEnum.PacketType.Ready)
     return self
 end
 

@@ -1,5 +1,5 @@
 return {
-    LOG_LEVEL = 3,
+    LOG_LEVEL = 1,
     
     LOADING = {
         TIMEOUT = 30
@@ -10,7 +10,7 @@ return {
     },
     
     TIMERS = {
-        CURSOR_UPDATE = 5
+        CURSOR_UPDATE = 1/10
     },
     
     BOARD = {
@@ -23,7 +23,7 @@ return {
                 Primary = Color3.fromRGB(77, 153, 0),
                 Secondary = Color3.fromRGB(105, 153, 57),
                 DiscoveredZero = Color3.fromRGB(255, 238, 153),
-                DiscoveredNearby = Color3.fromRGB(222, 207, 133),
+                DiscoveredNearby = Color3.fromRGB(170, 167, 100),
                 Mine = Color3.fromRGB(0, 0, 0),
                 MineClicked = Color3.fromRGB(255, 0, 0)
             },
