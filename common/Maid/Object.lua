@@ -2,11 +2,22 @@ local Object = {}
 local Maid -- attain context from runtime
 
 function Object.destroy(self)
-    if self._maidMetadata.flush then
-        self:flush()
-    end
-    if self._maidMetadata.destroy then
-        self:destroy()
+    task.wait()
+    -- for _, value in pairs(self) do
+    --     if typeof(value) == "table" then
+    --         if not value["__MAID_DONOTCLEAR"] then
+    --             Object.destroy(value)
+    --         end
+    --     end
+    -- end
+
+    if self._maidMetadata then
+        if self._maidMetadata.flush then
+            self._maidMetadata.flush(self)
+        end
+        if self._maidMetadata.destroy then
+            self._maidMetadata.destroy(self)
+        end
     end
 
     Maid._tracked[self] = nil
@@ -16,6 +27,7 @@ function Object.destroy(self)
         end
         self[key] = nil
     end
+
     setmetatable(self, nil)
 end
 Object.Destroy = Object.destroy

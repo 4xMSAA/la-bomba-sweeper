@@ -35,10 +35,10 @@ function Maid.attachMetadata(object)
 
     --  attach top-level Object properties that apply to self
     for property, value in pairs(Object) do
-        if rawget(object, property) then
-            object._maidMetadata[property] = value
+        if object[property] and object[property] ~= value then
+            object._maidMetadata[property] = object[property]
         end
-        if typeof(value) == "function" then
+        if typeof(value) == "function" and object[property] ~= value then
             rawset(object, property, value)
         end
     end
