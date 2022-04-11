@@ -88,7 +88,7 @@ end
 function Board:getRenderTile(x, y)
     assert(_G.Client, "only client can get the rendered part")
     
-    
+    return self._render.parts[x][y]
 end
 
 function Board:getNearbyTiles(x, y)
