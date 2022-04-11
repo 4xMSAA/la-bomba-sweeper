@@ -1,5 +1,6 @@
 local DEFAULT_RENDER_OPTIONS = _G.BOARD.RENDER
 local DEFAULT_GENERATE_OPTIONS = _G.BOARD.GENERATION
+local FLAG_OTHER_COOLDOWN = _G.FLAGGING.FLAG_PLACED_OTHER_COOLDOWN
 
 local Maid = require(shared.Common.Maid)
 local GameEnum = shared.GameEnum
@@ -11,6 +12,7 @@ end
 
 local function makeFlag(owner, x, y)
     return {
+        PlacedAt = time(),
         Owner = owner,
         Model = shared.Assets:WaitForChild("Flag"),
         X = x,
@@ -83,6 +85,12 @@ function Board:getTile(x, y)
     return self.Discovered[x][y]
 end
 
+function Board:getRenderTile(x, y)
+    assert(_G.Client, "only client can get the rendered part")
+    
+    
+end
+
 function Board:getNearbyTiles(x, y)
     assert(_G.Server, "only server can get nearby tiles")
 
@@ -135,13 +143,15 @@ function Board:mouseToBoard(pos)
 end
 
 function Board:isFlagged(x, y)
+    return self:getFlag(x, y) and true or false
+end
+
+function Board:getFlag(x, y)
     for _, flag in pairs(self.Flags) do
         if flag.X == x and flag.Y == y then
-            return true
+            return flag
         end
     end
-
-    return false
 end
 
 function Board:setFlag(x, y, state, owner)
@@ -160,6 +170,7 @@ function Board:setFlag(x, y, state, owner)
         end
         for i, flag in pairs(self.Flags) do
             if flag.X == x and flag.Y == y then
+                if owner and flag.Owner ~= owner and flag.PlacedAt + FLAG_OTHER_COOLDOWN > time() then return end
                 self.Flags[i] = nil
             end
         end
@@ -287,8 +298,8 @@ function Board:render(renderOptions)
     -- clear any flags placed if they are discovered
     for _, flag in pairs(self.Flags) do
         local x, y = flag.X, flag.Y
-        if self:getTile(x, y) ~= -1 then
-            self:setFlag(x, y, false)
+        if self:getTile(x, y) ~= -1 and self:getTile(x, y) ~= "Mine" then
+            self:setFlag(x, y, false, nil)
         end
     end
     
@@ -308,7 +319,6 @@ function Board:postProcess(renderOptions)
 end
 
 function Board:destroy()
-    print(self, "hi???")
     if _G.Client then
         for _, flagPart in pairs(self._render.flags) do
             flagPart:Destroy()

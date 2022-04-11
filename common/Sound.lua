@@ -37,7 +37,31 @@ function Sound.new(props, extraProps)
             end
         }
     )
-    self:_init(props, extraProps)
+    self:_init(props or {}, extraProps or {})
+
+    Maid.watch(self)
+
+    return self
+end
+
+function Sound.fromInstance(instance, props, extraProps)
+    local self = {
+        Instance = instance:Clone(),
+        _instances = {}
+    }
+
+    table.insert(self._instances, self.Instance)
+
+    -- set a metatable that first refers to the Sound table and then lastly to the Instance itself
+    setmetatable(
+        self,
+        {
+            __index = function(self, index)
+                return Sound[index] or self.Instance[index]
+            end
+        }
+    )
+    self:_init(props or {}, extraProps or {})
 
     Maid.watch(self)
 
@@ -76,7 +100,7 @@ end
 
 ---
 ---@param max number The maximum amount to allow sound instances
----@return userdata Roblox Sound instance which is not playing
+---@return userdata Sound Roblox Sound instance which is not playing
 function Sound:_getPlayableInstance(max)
     for _, sound in ipairs(self._instances) do
         if not sound.IsPlaying then
@@ -102,6 +126,10 @@ function Sound:_getPlayableInstance(max)
         end
     end
     return inst
+end
+
+function Sound:destroy()
+    -- do nothing
 end
 
 ---

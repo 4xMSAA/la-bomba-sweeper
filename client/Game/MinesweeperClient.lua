@@ -1,4 +1,8 @@
 local CURSOR_UPDATE_TICK = _G.TIMERS.CURSOR_UPDATE
+local CAMERA_SENSITIVITY_X = _G.CAMERA.SENSITIVITY.X
+local CAMERA_SENSITIVITY_Y = _G.CAMERA.SENSITIVITY.Y
+local ZOOM_MAX_SCROLL = _G.CAMERA.ZOOM.MAX_SCROLLS
+local ZOOM_PERCENTAGE = _G.CAMERA.ZOOM.PERCENTAGE
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,6 +15,7 @@ local GameEnum = shared.GameEnum
 local Maid = require(shared.Common.Maid)
 local Timer = require(shared.Common.Timer)
 local NetworkLib = require(shared.Common.NetworkLib)
+local Sound = require(shared.Common.Sound)
 local log, logwarn = require(shared.Common.Log)(script:GetFullName())
 
 local Board = require(shared.Game.Board)
@@ -21,29 +26,66 @@ raycastParams.FilterType = Enum.RaycastFilterType.Whitelist
 raycastParams.IgnoreWater = true
 
 
+local function playSound(game, folder)
+    local len = #folder:GetChildren()
+    local sound = folder:GetChildren()[math.random(len)]
+    
+    if not game.Sounds[sound] then
+        game.Sounds[sound] = Sound.fromInstance(sound, {Parent = _G.Path.Sounds})
+    end
+
+    game.Sounds[sound]:playMultiple(5)
+end
+
 local function placeFlag(game, state)
     local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
-    if tile then
-        local flagState
+    if tile and game.Board:getTile(tile.X, tile.Y) == -1 then
+        local isFlagged, flagState = game.Board:isFlagged(tile.X, tile.Y)
         if state ~= nil then
             flagState = state
         else
             flagState = not game.Board:isFlagged(tile.X, tile.Y)
         end
 
-        game.Board:setFlag(tile.X, tile.Y, flagState, Players.LocalPlayer)
-        NetworkLib:send(GameEnum.PacketType.SetFlagState, tile.X, tile.Y, flagState)
-        game.Board:render()
+        if flagState ~= isFlagged then
+            if flagState then
+                playSound(game, shared.Assets.Sounds.Flag)
+            end
+            game.Board:setFlag(tile.X, tile.Y, flagState, Players.LocalPlayer)
+            NetworkLib:send(GameEnum.PacketType.SetFlagState, tile.X, tile.Y, flagState)
+            game.Board:render()
+        end
         
         return flagState
     end
 end
 
 local function sweep(game)
-    local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
-    if tile and game.Board:getTile(tile.X, tile.Y) == -1 and not game.Board:isFlagged(tile.X, tile.Y) then
-        game.Board.Discovered[tile.X][tile.Y] = -2 -- put it into a "pending" state on the client
-        NetworkLib:send(GameEnum.PacketType.Discover, tile.X, tile.Y)
+    if game.GameState == GameEnum.GameState.InProgress then
+        local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
+        if tile and game.Board:getTile(tile.X, tile.Y) == -1 and not game.Board:isFlagged(tile.X, tile.Y) then
+            playSound(game, shared.Assets.Sounds.Discover)
+            game.Board.Discovered[tile.X][tile.Y] = -2 -- put it into a "pending" state on the client
+            NetworkLib:send(GameEnum.PacketType.Discover, tile.X, tile.Y)
+        end
+    end
+end
+
+local function updateMouseHover(game)
+    if game.GameState == GameEnum.GameState.InProgress or game.GameState == GameEnum.GameState.CleanUp then
+        local mouseLocation = UserInputService:GetMouseLocation()
+        local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
+        local flagInfo = game.Gui.FlagInfo
+
+        -- flag info
+        if tile and game.Board:isFlagged(tile.X, tile.Y) then
+            local flag = game.Board:getFlag(tile.X, tile.Y)
+            flagInfo.DisplayName.Text = flag.Owner.DisplayName
+            flagInfo.Position = UDim2.new(0, mouseLocation.X, 0, mouseLocation.Y)
+            flagInfo.Visible = flag.Owner == Players.LocalPlayer and false or true
+        else
+            flagInfo.Visible = false
+        end
     end
 end
 
@@ -60,12 +102,21 @@ function MinesweeperClient.new(client, options)
         Playing = {},
         Board = nil,
 
+        Gui = shared.Assets.Gui.Game:Clone(),
+        
+        Sounds = {},
+
         _binds = {},
         _state = {},
     }
 
     setmetatable(self, MinesweeperClient)
     Maid.watch(self)
+    
+    self.Gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+    
+    self.Camera:addOffset(1, CFrame.new())
+    self.Camera:addOffset(2, CFrame.new())
 
     return self
 end
@@ -81,33 +132,45 @@ function MinesweeperClient:isPlaying()
 end
 
 function MinesweeperClient:gameBegin(options)
-
     self.Playing = options.Players or {}
     
-    self.Camera:setCFrame(CFrame.new(0, 100, 0) * CFrame.Angles(-math.pi/2, 0, 0))
     self.Camera.FieldOfView = 30
     self.Board = Board.new()
     self.GameState = GameEnum.GameState.InProgress
-    
+    self._state.CameraHeight = 100 -- TODO: calculate
+    self._state.Scrolls = 0
+    self._state.CameraCFrame = CFrame.new()
+
     self.Board:render()
     raycastParams.FilterDescendantsInstances = {self.Board:getRenderModel()}
+
+    self.Camera:updateOffset(1, self._state.CameraCFrame)
+    self.Camera:updateOffset(2, CFrame.new())
+    self.Camera:setCFrame(CFrame.new(0, self._state.CameraHeight, 0) * CFrame.Angles(-math.pi/2, 0, 0))
     
 end
 
-function MinesweeperClient:gameEnd(extraData)
-    self.Board.Mines = extraData.Mines
-    self.Board.ExplosionAt = extraData.ExplosionAt
+function MinesweeperClient:gameEnd(victory, extraData)
+    
+    self.GameState = GameEnum.GameState.CleanUp
+    if victory then
+        self.Board.Mines = extraData.Mines
+    else
+        self.Board.Mines = extraData.Mines
+        self.Board.ExplosionAt = extraData.ExplosionAt
+    end
+
     self.Board:render()
-
     task.wait(5)
-
+    self.GameState = GameEnum.GameState.GameOver
     self.Board:destroy()
 end
 
 function MinesweeperClient:bindInput()
     ContextActionService:UnbindAllActions()
 
-    local flagging, sweeping = false, false
+    self._state.Scrolls = 0
+    local dragCamera, flagging, sweeping = false, false, false
     local flaggingState = false
     local function inputHandler(name, state, object)
         local boolState = state == Enum.UserInputState.Begin and true or false
@@ -116,6 +179,7 @@ function MinesweeperClient:bindInput()
                 if name == "PlaceFlag" then
                     flagging = true
                     flaggingState = placeFlag(self)
+                    updateMouseHover(self)
                 elseif name == "Discover" then
                     sweeping = true
                     sweep(self)
@@ -133,15 +197,36 @@ function MinesweeperClient:bindInput()
                 sweeping = false
             end
         end
+        
+        if name == "MoveCamera" then
+            dragCamera = boolState
+            UserInputService.MouseBehavior = 
+                boolState and Enum.MouseBehavior.LockCurrentPosition 
+                or Enum.MouseBehavior.Default
+        end
     end
     
     local function inputChangedHandler(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and flagging or sweeping then
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            if dragCamera then
+                self._state.CameraCFrame = 
+                    self._state.CameraCFrame *
+                    CFrame.new(input.Delta.X * CAMERA_SENSITIVITY_X, -input.Delta.Y * CAMERA_SENSITIVITY_Y, 0)
+                self.Camera:updateOffset(1, self._state.CameraCFrame)
+            end
             if flagging then 
                 placeFlag(self, flaggingState)
             elseif sweeping then
                 sweep(self)
             end
+            updateMouseHover(self)
+        elseif input.UserInputType == Enum.UserInputType.MouseWheel then
+                if input.Position.Z > 0 then
+                    self._state.Scrolls = math.min(ZOOM_MAX_SCROLL, self._state.Scrolls + 1)
+                elseif input.Position.Z < 0 then
+                    self._state.Scrolls = math.max(0, self._state.Scrolls - 1)
+                end 
+                self.Camera:updateOffset(2, CFrame.new(0, 0, -self._state.Scrolls * (self._state.CameraHeight * ZOOM_PERCENTAGE)))
         end
     end
     
@@ -149,6 +234,7 @@ function MinesweeperClient:bindInput()
 
     ContextActionService:BindAction("PlaceFlag", inputHandler, true, Enum.UserInputType.MouseButton2)
     ContextActionService:BindAction("Discover", inputHandler, true, Enum.UserInputType.MouseButton1)
+    ContextActionService:BindAction("MoveCamera", inputHandler, true, Enum.UserInputType.MouseButton3)
     ContextActionService:BindAction("debugPause", inputHandler, true, Enum.KeyCode.P)
     ContextActionService:BindAction("debugLog", inputHandler, true, Enum.KeyCode.O)
 end
@@ -189,18 +275,23 @@ function MinesweeperClient:route(packet, ...)
     local args = {...}
     if packet == GameEnum.PacketType.CursorUpdate then
         local player, x, z = args[1], args[2], args[3]
-        -- self.Cursors[player] = Vector2.new(x, , z)
+        -- self.Cursors[player] = Vector2.new(x, z)
     end
     
     if packet == GameEnum.PacketType.SetFlagState then
         local x, y, state, owner = args[1], args[2], args[3], args[4]
         self.Board:setFlag(x, y, state, owner)
+        self.Board:render()
+
+        playSound(self, shared.Assets.Sounds.Flag)
     end
     
     if packet == GameEnum.PacketType.Discover then
         local boardDiscovered = args[1]
         self.Board.Discovered = boardDiscovered
         self.Board:render()
+
+        playSound(self, shared.Assets.Sounds.Discover)
     end
 
     if packet == GameEnum.PacketType.GameState then
@@ -208,9 +299,31 @@ function MinesweeperClient:route(packet, ...)
         local stateEnum = GameEnum.GameState(enumID)
         if stateEnum == GameEnum.GameState.Begin or stateEnum == GameEnum.GameState.InProgress then
             self:gameBegin(args[2])
+            if args[2].Adhoc then
+                self.Board.Discovered = args[2].Board.Discovered
+                self.Board.Flags = args[2].Board.Flags
+            end
         elseif stateEnum == GameEnum.GameState.GameOver then
-            self:gameEnd(args[2])
+            self:gameEnd(args[2], args[3])
         end
+    end
+    
+    if packet == GameEnum.PacketType.PlaySound then
+        local instance, position = args[1], args[2]
+        local sound = Sound.fromInstance(instance, {Parent = _G.Path.Sounds})
+        sound.Ended:Connect(function()
+            if sound.Instance:FindFirstChildOfClass("Sound") then
+                sound.Instance:FindFirstChildOfClass("Sound"):Play()
+                sound.Instance:FindFirstChildOfClass("Sound").Ended:wait()
+            end
+            sound:destroy()
+        end)
+        
+        if position then
+            -- do some magic later on
+        end
+
+        sound:play()
     end
 end
 

@@ -6,7 +6,17 @@ return {
     },
     
     CAMERA = {
-        LIMIT_YAW = 90
+        LIMIT_YAW = 90,
+        
+        SENSITIVITY = {
+            X = 1/8,
+            Y = 1/8
+        },
+        
+        ZOOM = {
+            PERCENTAGE = 10/100,
+            MAX_SCROLLS = 4
+        }
     },
     
     TIMERS = {
@@ -43,5 +53,9 @@ return {
             Size = Vector2.new(25, 25),
             MinePercentage = 16,
         }
+    },
+    
+    FLAGGING = {
+        FLAG_PLACED_OTHER_COOLDOWN = 2/3
     }
 }

@@ -6,6 +6,12 @@ local log, logwarn = require(shared.Common.Log)(script:GetFullName())
 local MinesweeperNetworker = require(_G.Server.Game.MinesweeperNetworker)
 local Board = require(shared.Game.Board)
 
+local function playSoundFrom(folder)
+    local len = #folder:GetChildren()
+    local sound = folder:GetChildren()[math.random(len)]
+    
+    NetworkLib:send(GameEnum.PacketType.PlaySound, sound)
+end
 
 local function clientsToPlayers(clients)
     local result = {}
@@ -62,15 +68,30 @@ function Minesweeper:gameBegin()
 
 end
 
-function Minesweeper:gameEnd(explosionAt)
+function Minesweeper:gameEnd(victory, explosionAt, who)
     self.Playing = {}
     self.GameState = GameEnum.GameState.CleanUp
 
-    NetworkLib:send(GameEnum.PacketType.GameState, GameEnum.GameState.GameOver.ID, {ExplosionAt = explosionAt, Mines = self.Board.Mines})
+    if victory then
+        playSoundFrom(shared.Assets.Sounds.Victory)
+        NetworkLib:send(GameEnum.PacketType.GameState,
+            GameEnum.GameState.GameOver.ID,
+            true,
+            {Mines = self.Board.Mines}
+        )
+    else
+        playSoundFrom(shared.Assets.Sounds.Explode)
+        NetworkLib:send(
+            GameEnum.PacketType.GameState, 
+            GameEnum.GameState.GameOver.ID,
+            false,
+            -- TODO: ugly hack. fix auto serialize inside tables
+            {ExplosionAt = explosionAt, Mines = self.Board.Mines, Who = who:serialize()}
+        )
+    end
+    
     self.Board:destroy()
-    
     task.wait(6)
-    
     self.GameState = GameEnum.GameState.GameOver
 end
 
@@ -80,7 +101,7 @@ function Minesweeper:adhocClient(client)
         client, 
         GameEnum.PacketType.GameState,
         GameEnum.GameState.InProgress.ID, 
-        {Board = self.Board:serialize(true), Players = clientsToPlayers(self.Playing)}
+        {Adhoc = true, Board = self.Board:serialize(true), Players = clientsToPlayers(self.Playing)}
     )
 end
 
