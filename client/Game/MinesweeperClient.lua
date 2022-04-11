@@ -147,7 +147,8 @@ function MinesweeperClient:gameBegin(options)
     self.Camera:updateOffset(1, self._state.CameraCFrame)
     self.Camera:updateOffset(2, CFrame.new())
     self.Camera:setCFrame(CFrame.new(0, self._state.CameraHeight, 0) * CFrame.Angles(-math.pi/2, 0, 0))
-    
+
+    self.Gui:WaitForChild("Screen"):WaitForChild("SpectatingBar").Visible = options.Adhoc
 end
 
 function MinesweeperClient:gameEnd(victory, extraData)
@@ -164,6 +165,7 @@ function MinesweeperClient:gameEnd(victory, extraData)
     task.wait(5)
     self.GameState = GameEnum.GameState.GameOver
     self.Board:destroy()
+    
 end
 
 function MinesweeperClient:bindInput()
@@ -302,6 +304,7 @@ function MinesweeperClient:route(packet, ...)
             if args[2].Adhoc then
                 self.Board.Discovered = args[2].Board.Discovered
                 self.Board.Flags = args[2].Board.Flags
+                self.Board:render()
             end
         elseif stateEnum == GameEnum.GameState.GameOver then
             self:gameEnd(args[2], args[3])

@@ -31,9 +31,9 @@ function NetworkLib:_autoSerialize(...)
 
     local result = {}
 
-    log(2, "SERIALIZE: automatically serializing contents:", ...)
+    log(3, "SERIALIZE: automatically serializing contents:", ...)
     for key, value in pairs({...}) do
-        log(2, "SERIALIZE: GOT", key, "=", value)
+        log(3, "SERIALIZE: GOT", key, "=", value)
 
         if typeof(value) == "table" and value["serialize"] then
             value = value:serialize()
@@ -41,7 +41,7 @@ function NetworkLib:_autoSerialize(...)
             logwarn(1, "no serialize function on object: " .. tostring(value) .. "\n" .. debug.traceback())
         end
 
-        log(2, "SERIALIZE: ASSIGN", key, "=", value)
+        log(3, "SERIALIZE: ASSIGN", key, "=", value)
         result[key] = value
     end
 
@@ -59,7 +59,7 @@ function NetworkLib:_listenHandler(ev, callback, listenFor)
             ev:connect(
             function(id, ...)
                 local receivedEnum = NetworkLib:_toEnum(id)
-                log(2, "LISTEN: enum: ", receivedEnum and receivedEnum.Name or "nil", "contents:", ...)
+                log(3, "LISTEN: enum: ", receivedEnum and receivedEnum.Name or "nil", "contents:", ...)
                 if listenFor and receivedEnum == listenFor then
                     callback(...)
                 else
@@ -72,7 +72,7 @@ function NetworkLib:_listenHandler(ev, callback, listenFor)
             ev:connect(
             function(player, id, ...)
                 local receivedEnum = NetworkLib:_toEnum(id)
-                log(2, "LISTEN: from:", player, "enum:", receivedEnum and receivedEnum.Name or "nil", "contents:", ...)
+                log(3, "LISTEN: from:", player, "enum:", receivedEnum and receivedEnum.Name or "nil", "contents:", ...)
                 if listenFor and receivedEnum == listenFor then
                     callback(player, ...)
                 else
