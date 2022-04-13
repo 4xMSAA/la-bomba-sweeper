@@ -45,7 +45,7 @@ function NetworkLib:_autoSerialize(...)
         result[key] = value
     end
 
-    log(2, "SERIALIZE: serialized contents:", unpack(result))
+    log(3, "SERIALIZE: serialized contents:", unpack(result))
 
     return unpack(result)
 end

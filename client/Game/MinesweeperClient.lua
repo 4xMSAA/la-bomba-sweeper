@@ -34,29 +34,31 @@ local function playSound(game, folder)
         game.Sounds[sound] = Sound.fromInstance(sound, {Parent = _G.Path.Sounds})
     end
 
-    game.Sounds[sound]:playMultiple(5)
+    game.Sounds[sound]:play()
 end
 
 local function placeFlag(game, state)
-    local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
-    if tile and game.Board:getTile(tile.X, tile.Y) == -1 then
-        local isFlagged, flagState = game.Board:isFlagged(tile.X, tile.Y)
-        if state ~= nil then
-            flagState = state
-        else
-            flagState = not game.Board:isFlagged(tile.X, tile.Y)
-        end
-
-        if flagState ~= isFlagged then
-            if flagState then
-                playSound(game, shared.Assets.Sounds.Flag)
+    if game.GameState == GameEnum.GameState.InProgress then
+        local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
+        if tile and game.Board:getTile(tile.X, tile.Y) == -1 then
+            local isFlagged, flagState = game.Board:isFlagged(tile.X, tile.Y)
+            if state ~= nil then
+                flagState = state
+            else
+                flagState = not game.Board:isFlagged(tile.X, tile.Y)
             end
-            game.Board:setFlag(tile.X, tile.Y, flagState, Players.LocalPlayer)
-            NetworkLib:send(GameEnum.PacketType.SetFlagState, tile.X, tile.Y, flagState)
-            game.Board:render()
+
+            if flagState ~= isFlagged then
+                if flagState then
+                    playSound(game, shared.Assets.Sounds.Flag)
+                end
+                game.Board:setFlag(tile.X, tile.Y, flagState, Players.LocalPlayer)
+                NetworkLib:send(GameEnum.PacketType.SetFlagState, tile.X, tile.Y, flagState)
+                game.Board:render()
+            end
+            
+            return flagState
         end
-        
-        return flagState
     end
 end
 
@@ -148,7 +150,8 @@ function MinesweeperClient:gameBegin(options)
     self.Camera:updateOffset(2, CFrame.new())
     self.Camera:setCFrame(CFrame.new(0, self._state.CameraHeight, 0) * CFrame.Angles(-math.pi/2, 0, 0))
 
-    self.Gui:WaitForChild("Screen"):WaitForChild("SpectatingBar").Visible = options.Adhoc
+    print(self.Playing)
+    self.Gui:WaitForChild("Screen"):WaitForChild("SpectatingBar").Visible = not self:isPlaying()
 end
 
 function MinesweeperClient:gameEnd(victory, extraData)
@@ -172,14 +175,13 @@ function MinesweeperClient:bindInput()
     ContextActionService:UnbindAllActions()
 
     self._state.Scrolls = 0
-    local dragCamera, flagging, sweeping = false, false, false
+    local dragCamera, sweeping = false, false
     local flaggingState = false
     local function inputHandler(name, state, object)
         local boolState = state == Enum.UserInputState.Begin and true or false
         if boolState then
             if self.GameState == GameEnum.GameState.InProgress and self:isPlaying() then
                 if name == "PlaceFlag" then
-                    flagging = true
                     flaggingState = placeFlag(self)
                     updateMouseHover(self)
                 elseif name == "Discover" then
@@ -194,7 +196,7 @@ function MinesweeperClient:bindInput()
             end
         else
             if name == "PlaceFlag" then
-                flagging = false
+                flaggingState = nil
             elseif name == "Discover" then
                 sweeping = false
             end
@@ -216,7 +218,7 @@ function MinesweeperClient:bindInput()
                     CFrame.new(input.Delta.X * CAMERA_SENSITIVITY_X, -input.Delta.Y * CAMERA_SENSITIVITY_Y, 0)
                 self.Camera:updateOffset(1, self._state.CameraCFrame)
             end
-            if flagging then 
+            if flaggingState ~= nil then 
                 placeFlag(self, flaggingState)
             elseif sweeping then
                 sweep(self)
@@ -278,25 +280,20 @@ function MinesweeperClient:route(packet, ...)
     if packet == GameEnum.PacketType.CursorUpdate then
         local player, x, z = args[1], args[2], args[3]
         -- self.Cursors[player] = Vector2.new(x, z)
-    end
-    
-    if packet == GameEnum.PacketType.SetFlagState then
+    elseif packet == GameEnum.PacketType.SetFlagState then
         local x, y, state, owner = args[1], args[2], args[3], args[4]
         self.Board:setFlag(x, y, state, owner)
         self.Board:render()
-
+        
+        if owner == Players.LocalPlayer then return end
         playSound(self, shared.Assets.Sounds.Flag)
-    end
-    
-    if packet == GameEnum.PacketType.Discover then
+    elseif packet == GameEnum.PacketType.Discover then
         local boardDiscovered = args[1]
         self.Board.Discovered = boardDiscovered
         self.Board:render()
 
         playSound(self, shared.Assets.Sounds.Discover)
-    end
-
-    if packet == GameEnum.PacketType.GameState then
+    elseif packet == GameEnum.PacketType.GameState then
         local enumID = args[1]
         local stateEnum = GameEnum.GameState(enumID)
         if stateEnum == GameEnum.GameState.Begin or stateEnum == GameEnum.GameState.InProgress then
@@ -309,15 +306,18 @@ function MinesweeperClient:route(packet, ...)
         elseif stateEnum == GameEnum.GameState.GameOver then
             self:gameEnd(args[2], args[3])
         end
-    end
-    
-    if packet == GameEnum.PacketType.PlaySound then
+    elseif packet == GameEnum.PacketType.PlaySound then
         local instance, position = args[1], args[2]
         local sound = Sound.fromInstance(instance, {Parent = _G.Path.Sounds})
+        local childSound = sound.Instance:FindFirstChildOfClass("Sound")
+        if childSound and childSound:GetAttribute("PlayInstantly") then
+            childSound:Play()
+        end
+
         sound.Ended:Connect(function()
-            if sound.Instance:FindFirstChildOfClass("Sound") then
-                sound.Instance:FindFirstChildOfClass("Sound"):Play()
-                sound.Instance:FindFirstChildOfClass("Sound").Ended:wait()
+            if childSound and not childSound:GetAttribute("PlayInstantly") then
+                childSound:Play()
+                childSound.Ended:wait()
             end
             sound:destroy()
         end)
