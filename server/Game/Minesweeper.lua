@@ -37,6 +37,7 @@ function Minesweeper.new(server, options)
         
         Board = nil,
 
+        StartedAt = 0,
         GameState = GameEnum.GameState.GameOver
     }
 
@@ -62,8 +63,14 @@ function Minesweeper:gameBegin()
     
     self.Board = Board.new()
     self.Board:generate()
+    -- if config.FreeZeroStart then
+    self.Board:zeroStart()
+    self.StartedAt = time()
 
-    NetworkLib:send(GameEnum.PacketType.GameState, GameEnum.GameState.Begin.ID, {Players = clientsToPlayers(self.Playing)})
+    NetworkLib:send(GameEnum.PacketType.GameState, GameEnum.GameState.Begin.ID, {
+        Discovered = self.Board.Discovered,
+        Players = clientsToPlayers(self.Playing)
+    })
     self.GameState = GameEnum.GameState.InProgress
 
 end
@@ -77,7 +84,7 @@ function Minesweeper:gameEnd(victory, explosionAt, who)
         NetworkLib:send(GameEnum.PacketType.GameState,
             GameEnum.GameState.GameOver.ID,
             true,
-            {Mines = self.Board.Mines}
+            {Discovered = self.Board.Discovered, Mines = self.Board.Mines, TimeTaken = time() - self.StartedAt}
         )
     else
         playSoundFrom(shared.Assets.Sounds.Explode)
@@ -86,7 +93,7 @@ function Minesweeper:gameEnd(victory, explosionAt, who)
             GameEnum.GameState.GameOver.ID,
             false,
             -- TODO: ugly hack. fix auto serialize inside tables
-            {ExplosionAt = explosionAt, Mines = self.Board.Mines, Who = who:serialize()}
+            {Discovered = self.Board.Discovered, ExplosionAt = explosionAt, Mines = self.Board.Mines, Who = who:serialize()}
         )
     end
     
@@ -101,7 +108,7 @@ function Minesweeper:adhocClient(client)
         client, 
         GameEnum.PacketType.GameState,
         GameEnum.GameState.InProgress.ID, 
-        {Adhoc = true, Board = self.Board:serialize(true), Players = clientsToPlayers(self.Playing)}
+        {Adhoc = true, Board = self.Board:serialize(true), Discovered = self.Board.Discovered, Players = clientsToPlayers(self.Playing)}
     )
 end
 

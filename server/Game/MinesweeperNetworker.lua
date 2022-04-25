@@ -35,7 +35,9 @@ local RESPONSES = {
         if not getClientFromList(game.Playing, client) then return end
         
         local response = game.Board:discover(x, y)
-        if response == GameEnum.Discovery.Mine then
+        if game.Board:isVictory() then
+            game:gameEnd(true, {X = x, Y = y}, client)
+        elseif response == GameEnum.Discovery.Mine then
             game:gameEnd(false, {X = x, Y = y}, client)
         else
             NetworkLib:send(GameEnum.PacketType.Discover, game.Board.Discovered)

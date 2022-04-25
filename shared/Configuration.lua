@@ -6,7 +6,7 @@ return {
     },
     
     CAMERA = {
-        LIMIT_YAW = 90,
+        LIMIT_YAW = 360,
         
         SENSITIVITY = {
             X = 1/8,
@@ -15,7 +15,7 @@ return {
         
         ZOOM = {
             PERCENTAGE = 10/100,
-            MAX_SCROLLS = 4
+            MAX_SCROLLS = 6
         }
     },
     
@@ -31,9 +31,9 @@ return {
 
             PartColor = {
                 Primary = Color3.fromRGB(77, 153, 0),
-                Secondary = Color3.fromRGB(105, 153, 57),
+                Secondary = Color3.fromRGB(125, 183, 37),
                 DiscoveredZero = Color3.fromRGB(255, 238, 153),
-                DiscoveredNearby = Color3.fromRGB(170, 167, 100),
+                DiscoveredNearby = Color3.fromRGB(200, 190, 120),
                 Mine = Color3.fromRGB(0, 0, 0),
                 MineClicked = Color3.fromRGB(255, 0, 0)
             },
@@ -46,16 +46,55 @@ return {
                 [6] = Color3.fromRGB(85, 255, 255),
                 [7] = Color3.fromRGB(200, 200, 0),
                 [8] = Color3.fromRGB(255, 170, 0),
-                [9] = Color3.fromRGB(255, 255, 255), --how
             }
         },
         GENERATION = {
             Size = Vector2.new(25, 25),
             MinePercentage = 16,
+            FreeZeroStart = true,
+            RandomStartRadius = 5
         }
     },
     
     FLAGGING = {
         FLAG_PLACED_OTHER_COOLDOWN = 2/3
+    },
+    
+    MESSAGES = {
+        FAIL_COLOR = Color3.fromRGB(255, 120, 120),
+        FAIL = {
+            "%name% didn't sweep hard enough",
+            "%name% did a little mischief",
+            "%name% blew up",
+            "%name% picked up a mine",
+            "%name% found a mine",
+            "%name% bit the bullet",
+            "%name% frew up",
+            "%name% threw",
+            "%name% is covered in shrapnel",
+            "%name% touched la bomba",
+            "%name% loves la bomba",
+            "%name% adores la bomba",
+            "%name% hugged la bomba",
+            "%name% values la bomba",
+            "%name% did a \"minor\" miscalculation",
+            "%name% has a trigger finger",
+            "%name% got a little quirky"
+        },
+        
+        VICTORY_COLOR = Color3.fromRGB(120, 255, 120),
+        VICTORY = {
+            "Congratulations",
+            "Field cleared, over",
+            "Breach and clear",
+            "No accidents today, huh?",
+            "All in the numbers, baby",
+            "You actually did it?",
+            "Victory",
+            "GG NO RE",
+            "It's all safe now",
+            "Several breakdowns later",
+            "The job never ends"
+        }
     }
 }

@@ -198,9 +198,9 @@ function Board:discover(startX, startY)
                 if self:isFlagged(x, y) then self:setFlag(x, y, false) end
 
                 if nearbyMines == 0 then
-                    for _, newTile in pairs(self:getNearbyTiles(x, y)) do
-                        if self:getTile(newTile.X, newTile.Y) == -1 then
-                            table.insert(exploreTiles, newTile) 
+                    for _, nearbyTile in pairs(self:getNearbyTiles(x, y)) do
+                        if self:getTile(nearbyTile.X, nearbyTile.Y) == -1 then
+                            table.insert(exploreTiles, nearbyTile) 
                         end
                     end
                 end
@@ -211,6 +211,68 @@ function Board:discover(startX, startY)
     end
 
     return GameEnum.Discovery.Ignore
+end
+
+function Board:zeroStart()
+    assert(_G.Server, "only server can find a zero spot")
+
+    local radius = self.Options.RandomStartRadius
+    local centerX, centerY = math.floor(self.Options.Size.X/2), math.floor(self.Options.Size.Y/2)
+    
+    if self.Options.Size.X < radius*2 or self.Options.Size.Y < radius*2 then
+        radius = 0
+    end
+    
+    local startX, startY = centerX + math.random(-radius, radius), centerY + math.random(-radius, radius)
+    local isMine = self:getTile(startX, startY) == "Mine"
+
+    local startTile = not isMine and self:getNearbyMinesCount(startX, startY) or 1
+
+    if startTile > 0 then
+        local exploreTiles = {makeTile(startX, startY)}
+        local exploredTiles = {}
+        
+        while #exploreTiles > 0 do
+            local tile = exploreTiles[1]
+            local x, y = tile.X, tile.Y
+            exploredTiles[x] = exploredTiles[x] or {}
+
+            table.remove(exploreTiles, 1)
+
+            if not exploredTiles[x][y] then
+                exploredTiles[x][y] = true
+                if self:getTile(x, y) ~= "Mine" and self:getNearbyMinesCount(x, y) == 0 then
+                    self:discover(x, y)
+                    break
+                else
+                    for _, nearbyTile in pairs(self:getNearbyTiles(x, y)) do
+                        exploredTiles[nearbyTile.X] = exploredTiles[nearbyTile.X] or {}
+                        if not exploredTiles[nearbyTile.X][nearbyTile.Y] then
+                            table.insert(exploreTiles, nearbyTile)
+                        end
+                    end
+                end
+            end
+        end
+    else
+        self:discover(startX, startY)
+    end
+            
+    
+end
+
+function Board:isVictory()
+    assert(_G.Server, "only server can check for victory condition")
+
+    for x, column in pairs(self.Discovered) do
+        for y, number in pairs(column) do
+            if self:getTile(x, y) ~= "Mine" and number < 0 then
+                return false
+            end
+        end
+    end
+    
+    return true
 end
 
 function Board:serialize(noMines)
@@ -284,14 +346,29 @@ function Board:render(renderOptions)
             local offset = x % 2
             local useSecondary = y + offset % 2
             local number = self.Discovered[x][y]
+            local isMine = self:getTile(x, y) == "Mine"
             part.Label.Text = number > 0 and number or ""
             part.Label.TextColor3 = number > 0 and renderOptions.TextColor[number] or Color3.new()
             part.Instance.Color = 
                 (self.ExplosionAt and self.ExplosionAt.X == x and self.ExplosionAt.Y == y) and renderOptions.PartColor.MineClicked or
-                self:getTile(x, y) == "Mine" and renderOptions.PartColor.Mine or
+                isMine and renderOptions.PartColor.Mine or
                 number > 0 and renderOptions.PartColor.DiscoveredNearby or 
                 number == 0 and renderOptions.PartColor.DiscoveredZero or 
                 useSecondary % 2 == 0 and renderOptions.PartColor.Primary or renderOptions.PartColor.Secondary
+
+            if isMine and not part.HasExploded and self._render.explode then
+                part.HasExploded = true
+                local attachment = Instance.new("Attachment", part.Instance)
+                attachment.Position = Vector3.new(0, part.Size.Y * 2, 0)
+
+                local particles = shared.Assets.MineExplosion:GetChildren()
+                for _, particle in pairs(particles) do
+                    local p = particle:Clone()
+                    p.Parent = attachment
+                    p:Emit(p:GetAttribute("Emit") or 1)
+                end
+            end
+            
         end
     end
     
