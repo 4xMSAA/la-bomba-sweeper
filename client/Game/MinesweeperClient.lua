@@ -87,7 +87,9 @@ local function updateMouseHover(game)
             flagInfo.Visible = flag.Owner == Players.LocalPlayer and false or true
         else
             flagInfo.Visible = false
-        end
+        end 
+    else
+        flagInfo.Visible = false
     end
 end
 
@@ -392,10 +394,11 @@ function MinesweeperClient:route(packet, ...)
         if owner == Players.LocalPlayer then return end
         playSound(self, shared.Assets.Sounds.Flag)
     elseif packet == GameEnum.PacketType.Discover then
-        local boardDiscovered = args[1]
+        local boardDiscovered, owner = args[1], args[2]
         self.Board.Discovered = boardDiscovered
         self.Board:render()
 
+        if owner == Players.LocalPlayer then return end
         playSound(self, shared.Assets.Sounds.Discover)
     elseif packet == GameEnum.PacketType.GameState then
         local enumID = args[1]
