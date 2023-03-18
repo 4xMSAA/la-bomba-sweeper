@@ -386,12 +386,12 @@ function Board:render(renderOptions)
     
     for i, flag in pairs(self.Flags) do
         local x, y = flag.X, flag.Y
-        local flagPart = self._render.flags[flag] or flag.Model:Clone()
+        local flagModel = self._render.flags[flag] or flag.Model:Clone()
         local part = self._render.parts[x][y]
-        self._render.flags[flag] = flagPart
+        self._render.flags[flag] = flagModel
 
-        flagPart.Parent = part.Instance
-        flagPart:SetPrimaryPartCFrame(part.CFrame * CFrame.new(0, part.Size.Y/2, 0))
+        flagModel.Parent = part.Instance
+        flagModel:SetPrimaryPartCFrame(part.CFrame * CFrame.new(0, part.Size.Y/2, 0))
     end
 end
 
@@ -401,8 +401,8 @@ end
 
 function Board:destroy()
     if _G.Client then
-        for _, flagPart in pairs(self._render.flags) do
-            flagPart:Destroy()
+        for _, flagModel in pairs(self._render.flags) do
+            flagModel:Destroy()
         end
         if self._render.model then
             self._render.model:Destroy()
