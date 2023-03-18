@@ -78,7 +78,7 @@ local function sweep(game)
 end
 
 local function updateMouseHover(game)
-    local flagInfo = game.Gui.FlagInfo
+    local flagInfo = game.Gui.InfoBox.FlagInfo
     if game.GameState == GameEnum.GameState.InProgress or game.GameState == GameEnum.GameState.CleanUp and game.Board then
         local mouseLocation = UserInputService:GetMouseLocation()
         local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
@@ -235,7 +235,7 @@ function MinesweeperClient:bindInput()
             end
         else
             if name == "PlaceFlag" then
-                flaggingState = false
+                flaggingState = nil
             elseif name == "Discover" then
                 sweeping = false
             end
