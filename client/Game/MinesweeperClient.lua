@@ -8,6 +8,9 @@ local FAIL_MESSAGES = _G.MESSAGES.FAIL
 local VICTORY_MESSAGE_COLOR = _G.MESSAGES.VICTORY_COLOR
 local FAIL_MESSAGE_COLOR = _G.MESSAGES.FAIL_COLOR
 
+local BOARD_UNDISCOVERED = -1
+local BOARD_PENDING = -2
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -40,7 +43,7 @@ end
 local function placeFlag(game, state)
     if game.GameState == GameEnum.GameState.InProgress then
         local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
-        if tile and game.Board:getTile(tile.X, tile.Y) == -1 then
+        if tile and game.Board:getTile(tile.X, tile.Y) == BOARD_UNDISCOVERED then
             local isFlagged, flagState = game.Board:isFlagged(tile.X, tile.Y)
             if state ~= nil then
                 flagState = state
@@ -65,19 +68,20 @@ end
 local function sweep(game)
     if game.GameState == GameEnum.GameState.InProgress then
         local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
-        if tile and game.Board:getTile(tile.X, tile.Y) == -1 and not game.Board:isFlagged(tile.X, tile.Y) then
+        if tile and game.Board:getTile(tile.X, tile.Y) == BOARD_UNDISCOVERED and not game.Board:isFlagged(tile.X, tile.Y) then
             playSound(game, shared.Assets.Sounds.Discover)
-            game.Board.Discovered[tile.X][tile.Y] = -2 -- put it into a "pending" state on the client
+            game.Board.Discovered[tile.X][tile.Y] = BOARD_PENDING
+            game.Board:render()
             NetworkLib:send(GameEnum.PacketType.Discover, tile.X, tile.Y)
         end
     end
 end
 
 local function updateMouseHover(game)
+    local flagInfo = game.Gui.FlagInfo
     if game.GameState == GameEnum.GameState.InProgress or game.GameState == GameEnum.GameState.CleanUp and game.Board then
         local mouseLocation = UserInputService:GetMouseLocation()
         local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
-        local flagInfo = game.Gui.FlagInfo
 
         -- flag info
         if tile and game.Board:isFlagged(tile.X, tile.Y) then
@@ -394,7 +398,7 @@ function MinesweeperClient:route(packet, ...)
         if owner == Players.LocalPlayer then return end
         playSound(self, shared.Assets.Sounds.Flag)
     elseif packet == GameEnum.PacketType.Discover then
-        local boardDiscovered, owner = args[1], args[2]
+        local owner, boardDiscovered = args[1], args[2]
         self.Board.Discovered = boardDiscovered
         self.Board:render()
 

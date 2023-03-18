@@ -2,6 +2,9 @@ local DEFAULT_RENDER_OPTIONS = _G.BOARD.RENDER
 local DEFAULT_GENERATE_OPTIONS = _G.BOARD.GENERATION
 local FLAG_OTHER_COOLDOWN = _G.FLAGGING.FLAG_PLACED_OTHER_COOLDOWN
 
+local BOARD_UNDISCOVERED = -1
+local BOARD_PENDING = -2
+
 local Maid = require(shared.Common.Maid)
 local GameEnum = shared.GameEnum
 local log, logwarn = require(shared.Common.Log)(script:GetFullName())
@@ -40,7 +43,7 @@ function Board.new(options, renderOptions)
     for x = 1, self.Options.Size.X do
         self.Discovered[x] = {}
         for y = 1, self.Options.Size.Y do
-           self.Discovered[x][y] = -1
+           self.Discovered[x][y] = BOARD_UNDISCOVERED
         end
     end
 
@@ -156,7 +159,7 @@ end
 
 function Board:setFlag(x, y, state, owner)
     local tile = self:getTile(x, y)
-    if tile == -1 and state then
+    if tile == BOARD_UNDISCOVERED and state then
         table.insert(self.Flags, makeFlag(owner, x, y))
     elseif tile and not state then
         if _G.Client then
@@ -184,7 +187,7 @@ function Board:discover(startX, startY)
 
     if tile == "Mine" then
         return GameEnum.Discovery.Mine
-    elseif tile == -1 then
+    elseif tile == BOARD_UNDISCOVERED then
         local exploreTiles = {makeTile(startX, startY)}
 
         while #exploreTiles > 0 do
@@ -192,14 +195,14 @@ function Board:discover(startX, startY)
             local x, y = exploreTile.X, exploreTile.Y
             table.remove(exploreTiles, 1)
 
-            if self:getTile(x, y) == -1 then
+            if self:getTile(x, y) == BOARD_UNDISCOVERED then
                 local nearbyMines = self:getNearbyMinesCount(x, y)
                 self.Discovered[x][y] = nearbyMines
                 if self:isFlagged(x, y) then self:setFlag(x, y, false) end
 
                 if nearbyMines == 0 then
                     for _, nearbyTile in pairs(self:getNearbyTiles(x, y)) do
-                        if self:getTile(nearbyTile.X, nearbyTile.Y) == -1 then
+                        if self:getTile(nearbyTile.X, nearbyTile.Y) == BOARD_UNDISCOVERED then
                             table.insert(exploreTiles, nearbyTile) 
                         end
                     end
@@ -349,6 +352,7 @@ function Board:render(renderOptions)
             local isMine = self:getTile(x, y) == "Mine"
             part.Label.Text = number > 0 and number or ""
             part.Label.TextColor3 = number > 0 and renderOptions.TextColor[number] or Color3.new()
+            part.Instance.CFrame = part.CFrame * CFrame.Angles(number == -2 and math.pi or 0, 0, 0)
             part.Instance.Color = 
                 (self.ExplosionAt and self.ExplosionAt.X == x and self.ExplosionAt.Y == y) and renderOptions.PartColor.MineClicked or
                 isMine and renderOptions.PartColor.Mine or
@@ -375,7 +379,7 @@ function Board:render(renderOptions)
     -- clear any flags placed if they are discovered
     for _, flag in pairs(self.Flags) do
         local x, y = flag.X, flag.Y
-        if self:getTile(x, y) ~= -1 and self:getTile(x, y) ~= "Mine" then
+        if self:getTile(x, y) ~= BOARD_UNDISCOVERED and self:getTile(x, y) ~= "Mine" then
             self:setFlag(x, y, false, nil)
         end
     end
