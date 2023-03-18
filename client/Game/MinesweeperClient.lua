@@ -116,7 +116,9 @@ function MinesweeperClient.new(client, options)
         Sounds = {},
 
         _binds = {},
-        _state = {},
+        _state = {
+            CameraCFrame = CFrame.new()
+        },
     }
 
     setmetatable(self, MinesweeperClient)
@@ -233,7 +235,7 @@ function MinesweeperClient:bindInput()
             end
         else
             if name == "PlaceFlag" then
-                flaggingState = nil
+                flaggingState = false
             elseif name == "Discover" then
                 sweeping = false
             end
