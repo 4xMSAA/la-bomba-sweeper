@@ -16,7 +16,7 @@ function UI.createMessage(text, color, duration)
 
     local messages = UI.ScreenInstance.MessageList
     local messageTemplate = messages.MessageTemplate:Clone()
-    color = color or Color3.fromRGB(255,255,255)
+    color = color or Color3.fromRGB(255, 255, 255)
     duration = duration or 30
 
     local message = messageTemplate:Clone()

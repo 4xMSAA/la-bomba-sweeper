@@ -275,6 +275,23 @@ function MinesweeperClient:bindInput()
                 self._state.CameraCFrame = 
                     self._state.CameraCFrame *
                     CFrame.new(input.Delta.X * CAMERA_SENSITIVITY_X, -input.Delta.Y * CAMERA_SENSITIVITY_Y, 0)
+                local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = self._state.CameraCFrame:components()
+                local extents = self.Board:getExtents() 
+                local pos = self.Board:getPosition()
+                local boundX = math.min(
+                    math.max(
+                        pos.X - extents.X / 2, x
+                    ),
+                    pos.X + extents.X / 2
+                )
+                local boundY = math.min(
+                    math.max(
+                        pos.Z - extents.Z / 2, y
+                    ),
+                    pos.Z + extents.Z / 2
+                )
+
+                self._state.CameraCFrame = CFrame.new(boundX, boundY, z, r00, r01, r02, r10, r11, r12, r20, r21, r22)
                 self.Camera:updateOffset(1, self._state.CameraCFrame)
             end
             if flaggingState ~= nil then 
@@ -341,7 +358,7 @@ function MinesweeperClient:bind()
             local nearestCursor = self.CursorManager:getNearestCursor()
             if nearestCursor then
                 cursorInfo.Visible = true
-                cursorInfo.DisplayName.Text = nearestCursor.Owner.Instance.DisplayName
+                cursorInfo.DisplayName.Text = nearestCursor.Owner.DisplayName
                 cursorInfo.DisplayName.TextColor3 = nearestCursor.Color
             end
             

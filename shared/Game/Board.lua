@@ -300,6 +300,8 @@ function Board:renderCreate(renderOptions)
     self._render.parts = {}
     self._render.flags = {}
     self._render.model = Instance.new("Model")
+    
+
     renderOptions = renderOptions or self.RenderOptions
     local genOptions = self.Options
     local CFoffset = CFrame.new(
@@ -327,10 +329,24 @@ function Board:renderCreate(renderOptions)
             }
         end
     end
+
+    self._render.extentsSize = self._render.model:GetExtentsSize()
+    self._render.position = self._render.model:GetPivot()
 end
 
 function Board:getRenderModel()
+    assert(_G.Client, "only client can render the board")
     return self._render.model
+end
+
+function Board:getExtents()
+    assert(_G.Client, "only client can render the board")
+    return self._render.extentsSize
+end
+
+function Board:getPosition()
+    assert(_G.Client, "only client can render the board")
+    return self._render.position
 end
 
 function Board:render(renderOptions)

@@ -83,7 +83,7 @@ function CursorManager:listen()
         elseif status == "add" then
 
             local owner = args[1]
-            -- if owner.ID == Players.LocalPlayer.UserId then return end
+            if owner.ID == Players.LocalPlayer.UserId then return end
 
             self:createNewCursor(owner)
         elseif status == "remove" then

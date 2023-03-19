@@ -26,7 +26,8 @@ function Client:serialize()
     return {
         Instance = self.Instance,
         ID = self.ID,
-        Name = self.Name
+        Name = self.Name,
+        DisplayName = self.Instance.DisplayName
     }
 end
 
