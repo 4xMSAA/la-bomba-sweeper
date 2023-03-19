@@ -1,5 +1,8 @@
+local CURSOR_THRESHOLD_PX = 50
+
 local UIS = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
+local Players = game:GetService("Players")
 
 local GameEnum = shared.GameEnum
 
@@ -32,7 +35,18 @@ end
 
 
 function CursorManager:getNearestCursor()
-        
+    local mouseLoc = UIS:GetMouseLocation()
+    
+    for _, cursor in pairs(self.Cursors) do
+        if cursor.Visible 
+            and cursor.Position.X + CURSOR_THRESHOLD_PX > mouseLoc.X
+            and cursor.Position.Y + CURSOR_THRESHOLD_PX > mouseLoc.Y
+            and cursor.Position.X - CURSOR_THRESHOLD_PX < mouseLoc.X
+            and cursor.Position.Y - CURSOR_THRESHOLD_PX < mouseLoc.Y
+        then
+            return cursor
+        end
+    end
 end
 
 function CursorManager:createNewCursor(owner)
@@ -46,38 +60,47 @@ end
 
 
 function CursorManager:sendWorldCursor()
-    if self._state.CursorLastPosition == UserInputService:GetMouseLocation() then return end
-    self._state.CursorLastPosition = UserInputService:GetMouseLocation()
-
     local mouseLoc = UIS:GetMouseLocation()
-    local cameraRay = Camera:ViewportPointToRay(mouseLoc.X, mouseLoc.Y)
-    local worldRay = workspace:Raycast(cameraRay.Origin, cameraRay.Direction * self.Game._state.CameraHeight * 1.5)
-    local position = worldRay.Position
-    print(position)
 
-    NetworkLib:send(GameEnum.PacketType.CursorUpdate, "update", position)
+    if self._state.CursorLastPosition == mouseLoc then return end
+    self._state.CursorLastPosition = mouseLoc
+
+    local cameraRay = Camera:ViewportPointToRay(mouseLoc.X, mouseLoc.Y)
+    local worldRay = workspace:Raycast(cameraRay.Origin, cameraRay.Direction * 200)
+    if worldRay then
+        local position = worldRay.Position
+
+        NetworkLib:send(GameEnum.PacketType.CursorUpdate, "update", position)
+    end
 end
 
 function CursorManager:listen()
     NetworkLib:listenFor(GameEnum.PacketType.CursorUpdate, function(status, ...)
         local args = {...}
-        print("listening for CursorUpdate...", status, args)
         if status == "update" then
             local cursors = args[1]
-            for owner, cursorPosition in pairs(cursors) do
-                if self.Cursors[owner.ID] then
-                    self.Cursors[owner.ID]:setPosition(cursorPosition)
+            for ownerID, cursorPosition in pairs(cursors) do
+                if self.Cursors[tonumber(ownerID)] then
+                    self.Cursors[tonumber(ownerID)]:setPosition(cursorPosition)
                 end
             end
         elseif status == "add" then
-            print("create cursor")
+
             local owner = args[1]
+            if owner.ID == Players.LocalPlayer.UserId then return end
+
             self:createNewCursor(owner)
         elseif status == "remove" then
             local id = args[1]
-            self:removeCursorByID(id)
+            self:removeCursorByID(tonumber(id))
         end
     end)
+end
+
+function CursorManager:update()
+    for _, cursor in pairs(self.Cursors) do
+        cursor:setPosition(cursor.WorldPosition, true)
+    end
 end
 
 return CursorManager

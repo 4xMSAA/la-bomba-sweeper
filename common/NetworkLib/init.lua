@@ -109,7 +109,7 @@ end
 function NetworkLib:listenFor(enum, callback)
     if isClient then
         return NetworkLib:_listenHandler(remotes.Signal.OnClientEvent, callback, enum)
-    elseif isServer then
+    else
         return NetworkLib:_listenHandler(remotes.Signal.OnServerEvent, callback, enum)
     end
 end

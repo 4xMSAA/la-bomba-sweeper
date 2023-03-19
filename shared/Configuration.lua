@@ -20,7 +20,7 @@ return {
     },
     
     TIMERS = {
-        CURSOR_UPDATE = 1e300
+        CURSOR_UPDATE = 0.04
     },
     
     BOARD = {

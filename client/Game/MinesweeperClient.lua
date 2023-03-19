@@ -79,16 +79,19 @@ local function sweep(game)
 end
 
 local function updateMouseHover(game)
-    local flagInfo = game.Gui.InfoBox.FlagInfo
+    local infoBox = game.Gui.InfoBox
+    local flagInfo = infoBox.FlagInfo
+    local mouseLocation = UserInputService:GetMouseLocation()
+
+    infoBox.Position = UDim2.new(0, mouseLocation.X, 0, mouseLocation.Y)
+
     if game.GameState == GameEnum.GameState.InProgress or game.GameState == GameEnum.GameState.CleanUp and game.Board then
-        local mouseLocation = UserInputService:GetMouseLocation()
         local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
 
         -- flag info
         if tile and game.Board:isFlagged(tile.X, tile.Y) then
             local flag = game.Board:getFlag(tile.X, tile.Y)
             flagInfo.DisplayName.Text = flag.Owner.DisplayName
-            flagInfo.Position = UDim2.new(0, mouseLocation.X, 0, mouseLocation.Y)
             flagInfo.Visible = flag.Owner == Players.LocalPlayer and false or true
         else
             flagInfo.Visible = false
@@ -111,6 +114,7 @@ function MinesweeperClient.new(client, options)
         Playing = {},
         Board = nil,
         Victory = false,
+        CursorManager = CursorManager.new(self),
 
         Gui = shared.Assets.Gui.Game:Clone(),
         
@@ -320,7 +324,6 @@ function MinesweeperClient:bindInput()
 end
 
 function MinesweeperClient:bind()
-    self._state.CursorLastPosition = nil
 
     -- runservice binds
     self._binds.Cursor = RunService:BindToRenderStep(
@@ -329,8 +332,19 @@ function MinesweeperClient:bind()
         function(dt)
             if self.Client.Paused then return end
             if CursorUpdateTimer:tick(dt) then
-                CursorManager:sendWorldCursor()
+                self.CursorManager:sendWorldCursor()
             end
+            self.CursorManager:update()
+            
+            local cursorInfo = self.Gui.InfoBox.CursorInfo
+            cursorInfo.Visible = false
+            local nearestCursor = self.CursorManager:getNearestCursor()
+            if nearestCursor then
+                cursorInfo.Visible = true
+                cursorInfo.DisplayName.Text = nearestCursor.Owner.Name
+                cursorInfo.DisplayName.TextColor3 = nearestCursor.Color
+            end
+            
         end
     )
 

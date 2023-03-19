@@ -1,3 +1,5 @@
+local CURSOR_UPDATE_TICK = _G.TIMERS.CURSOR_UPDATE
+
 local Maid = require(shared.Common.Maid)
 local NetworkLib = require(shared.Common.NetworkLib)
 local GameEnum = shared.GameEnum
@@ -153,7 +155,7 @@ return function(server, options)
         end
     end)()
     
-    while task.wait(0.2) do
-        NetworkLib:send(GameEnum.PacketType.CursorUpdate, game.Cursors)
+    while task.wait(CURSOR_UPDATE_TICK) do
+        NetworkLib:send(GameEnum.PacketType.CursorUpdate, "update", game.Cursors)
     end
 end
