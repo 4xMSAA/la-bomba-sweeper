@@ -37,7 +37,7 @@ function NetworkLib:_autoSerialize(...)
 
         if typeof(value) == "table" and value["serialize"] then
             value = value:serialize()
-        elseif typeof(value) == "table" then
+        elseif typeof(value) == "table" and value["new"] ~= nil then
             logwarn(1, "no serialize function on object: " .. tostring(value) .. "\n" .. debug.traceback())
         end
 
@@ -62,7 +62,7 @@ function NetworkLib:_listenHandler(ev, callback, listenFor)
                 log(3, "LISTEN: enum: ", receivedEnum and receivedEnum.Name or "nil", "contents:", ...)
                 if listenFor and receivedEnum == listenFor then
                     callback(...)
-                else
+                elseif not listenFor then
                     callback(receivedEnum, ...)
                 end
             end
@@ -75,7 +75,7 @@ function NetworkLib:_listenHandler(ev, callback, listenFor)
                 log(3, "LISTEN: from:", player, "enum:", receivedEnum and receivedEnum.Name or "nil", "contents:", ...)
                 if listenFor and receivedEnum == listenFor then
                     callback(player, ...)
-                else
+                elseif not listenFor then
                     callback(player, receivedEnum, ...)
                 end
             end
