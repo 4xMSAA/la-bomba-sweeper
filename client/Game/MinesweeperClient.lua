@@ -393,7 +393,7 @@ function MinesweeperClient:route(packet, ...)
         self.Board:setFlag(x, y, state, owner)
         self.Board:render()
         
-        if owner.Instance == Players.LocalPlayer then return end
+        if owner == Players.LocalPlayer then return end
         playSound(self, shared.Assets.Sounds.Flag)
     elseif packet == GameEnum.PacketType.Discover then
         local owner, boardDiscovered = args[1], args[2]
