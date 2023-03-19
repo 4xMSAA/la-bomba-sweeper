@@ -26,6 +26,7 @@ local Sound = require(shared.Common.Sound)
 local log, logwarn = require(shared.Common.Log)(script:GetFullName())
 
 local Board = require(shared.Game.Board)
+local CursorManager = require(_G.Client.Game.CursorManager)
 
 local CursorUpdateTimer = Timer.new(CURSOR_UPDATE_TICK)
 
@@ -126,6 +127,8 @@ function MinesweeperClient.new(client, options)
     
     self.Gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
     self.UI = require(_G.Client.Game.UI)(self)
+    self.CursorManager = CursorManager.new(self)
+    self.CursorManager:listen()
     
     self.Camera:addOffset(1, CFrame.new())
     self.Camera:addOffset(2, CFrame.new())
@@ -326,11 +329,7 @@ function MinesweeperClient:bind()
         function(dt)
             if self.Client.Paused then return end
             if CursorUpdateTimer:tick(dt) then
-                if self._state.CursorLastPosition == UserInputService:GetMouseLocation() then return end
-                self._state.CursorLastPosition = UserInputService:GetMouseLocation()
-                
-                local hitPos = self.Client.Mouse.Hit.Position
-                NetworkLib:send(GameEnum.PacketType.CursorUpdate, hitPos.X, hitPos.Z)
+                CursorManager:sendWorldCursor()
             end
         end
     )
@@ -389,15 +388,12 @@ end
 
 function MinesweeperClient:route(packet, ...)
     local args = {...}
-    if packet == GameEnum.PacketType.CursorUpdate then
-        local player, x, z = args[1], args[2], args[3]
-        -- self.Cursors[player] = Vector2.new(x, z)
-    elseif packet == GameEnum.PacketType.SetFlagState then
+    if packet == GameEnum.PacketType.SetFlagState then
         local x, y, state, owner = args[1], args[2], args[3], args[4]
         self.Board:setFlag(x, y, state, owner)
         self.Board:render()
         
-        if owner == Players.LocalPlayer then return end
+        if owner.Instance == Players.LocalPlayer then return end
         playSound(self, shared.Assets.Sounds.Flag)
     elseif packet == GameEnum.PacketType.Discover then
         local owner, boardDiscovered = args[1], args[2]

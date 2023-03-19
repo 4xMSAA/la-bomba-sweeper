@@ -88,7 +88,6 @@ function ClientManager:init()
         end
     )
 
-    -- studio hack (still have to do this in 2021 KEKW)
     for _, player in pairs(Players:GetPlayers()) do
         self:addClientByPlayer(player)
     end
@@ -99,6 +98,14 @@ end
 function ClientManager:getClientBy(player)
     for _, client in pairs(self.Clients) do
         if client.Instance == player then
+            return client
+        end
+    end
+end
+
+function ClientManager:getClientByID(id)
+    for _, client in pairs(self.Clients) do
+        if client.ID == id then
             return client
         end
     end

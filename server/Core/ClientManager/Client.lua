@@ -23,8 +23,11 @@ end
 
 ---Serialize the data for network transfer
 function Client:serialize()
-    -- TODO: actually output client rather than player instance
-    return self.Instance
+    return {
+        Instance = self.Instance,
+        ID = self.ID,
+        Name = self.Name
+    }
 end
 
 return Client

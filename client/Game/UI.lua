@@ -29,6 +29,13 @@ function UI.createMessage(text, color, duration)
     
 end
 
+
+function UI.createCursor()
+    local cursor = shared.Assets.Gui.Templates.Cursor:Clone()
+    cursor.Parent = UI.Instance
+    return cursor
+end
+
 return function(game)
     UI.Game = game
     UI.Instance = game.Gui

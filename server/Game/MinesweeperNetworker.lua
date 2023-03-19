@@ -20,15 +20,13 @@ local RESPONSES = {
         NetworkLib:send(GameEnum.PacketType.SetFlagState, x, y, state, client.Instance)
     end,
 
-    [GameEnum.PacketType.CursorUpdate] = function(game, client, x, z)
-        if not getClientFromList(game.Playing, client) then return end
-
-        -- local cursor = game.Cursors[client]
-        -- cursor.X = x
-        -- cursor.Y = y
-        -- cursor.Z = z
+    [GameEnum.PacketType.CursorUpdate] = function(game, client, status, ...)
+        local args = {...}
         
-        NetworkLib:send(GameEnum.PacketType.CursorUpdate, client, x, z)
+        if status == "update" then
+            local position = args[1]
+            game.Cursors[client.ID] = position
+        end
     end,
     
     [GameEnum.PacketType.Discover] = function(game, client, x, y)

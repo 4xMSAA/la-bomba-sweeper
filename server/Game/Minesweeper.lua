@@ -110,6 +110,15 @@ function Minesweeper:adhocClient(client)
         GameEnum.GameState.InProgress.ID, 
         {Adhoc = true, Board = self.Board:serialize(true), Discovered = self.Board.Discovered, Players = clientsToPlayers(self.Playing)}
     )
+
+    for clientID, _ in pairs(self.Cursors) do
+        NetworkLib:sendTo(
+            client, 
+            GameEnum.PacketType.CursorUpdate,
+            "add",
+            self.ClientManager:getClientByID(clientID)
+        )
+    end
 end
 
 function Minesweeper:route(packet, player, ...)
@@ -125,13 +134,26 @@ return function(server, options)
         if game.GameState == GameEnum.GameState.InProgress then
             game:adhocClient(client)
         end
+        
+        NetworkLib:send(GameEnum.PacketType.CursorUpdate, "add", client)
     end)
     
-    while task.wait(1) do
-        if game.GameState == GameEnum.GameState.GameOver then
-            if #game.ClientManager:getClients() > 0 then
-                game:gameBegin()
+    game.ClientManager.ClientRemoving:connect(function(client)
+        NetworkLib:send(GameEnum.PacketType.CursorUpdate, "remove", client.ID)
+    end)
+    
+    -- TODO: ugly... fix later
+    coroutine.wrap(function()
+        while task.wait(1) do
+            if game.GameState == GameEnum.GameState.GameOver then
+                if #game.ClientManager:getClients() > 0 then
+                    game:gameBegin()
+                end
             end
         end
+    end)()
+    
+    while task.wait(0.2) do
+        NetworkLib:send(GameEnum.PacketType.CursorUpdate, game.Cursors)
     end
 end

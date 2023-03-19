@@ -11,7 +11,6 @@ local GameEnum = {
     {"Discover", "Client sends a place to discover"},
     {"SetFlagState", "On send, client wants to set or remove a flag at (x,y); on receive, (x,y) and owner"},
     {"CursorUpdate", "Send server cursor information or receive other players' cursor information"}
-
 }
 
 return TableUtils.toEnumList(script.Parent.Name, GameEnum)
