@@ -38,6 +38,7 @@ function CursorManager:getNearestCursor()
     local mouseLoc = UIS:GetMouseLocation()
     
     for _, cursor in pairs(self.Cursors) do
+        print((cursor.Position - mouseLoc).magnitude)
         if cursor.Visible and (cursor.Position - mouseLoc).magnitude < CURSOR_THRESHOLD_PX then
             return cursor
         end

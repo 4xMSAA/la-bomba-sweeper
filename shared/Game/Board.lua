@@ -36,6 +36,8 @@ function Board.new(options, renderOptions)
         Discovered = {},
         Flags = {},
         Mines = {},
+        MineCount = 0,
+        StartedAt = os.clock(),
         
         _render = {}
     }
@@ -60,6 +62,8 @@ function Board:generate(options)
     local totalTiles = (options.Size.X*options.Size.Y)
     local capacity = (totalTiles * (options.MinePercentage / 100))
     
+    self.MineCount = capacity
+
     local available = {}
     for x = 1, options.Size.X do
         for y = 1, options.Size.Y do
@@ -159,7 +163,7 @@ end
 
 function Board:setFlag(x, y, state, owner)
     local tile = self:getTile(x, y)
-    if tile == BOARD_UNDISCOVERED and state then
+    if tile == BOARD_UNDISCOVERED and state and not self:getFlag(x, y) then
         table.insert(self.Flags, makeFlag(owner, x, y))
     elseif tile and not state then
         if _G.Client then
@@ -171,6 +175,7 @@ function Board:setFlag(x, y, state, owner)
                 end
             end
         end
+        -- prevent users removing other people's flags when they have been recently placed down
         for i, flag in pairs(self.Flags) do
             if flag.X == x and flag.Y == y then
                 if owner and flag.Owner ~= owner and flag.PlacedAt + FLAG_OTHER_COOLDOWN > time() then return end
@@ -283,7 +288,9 @@ function Board:serialize(noMines)
         Options = self.Options,
         Discovered = self.Discovered,
         Flags = self.Flags,
-        Mines = noMines and nil or self.Mines,
+        Mines = noMines and {} or self.Mines,
+        MineCount = self.MineCount,
+        StartedAt = self.StartedAt
     }
 end
 

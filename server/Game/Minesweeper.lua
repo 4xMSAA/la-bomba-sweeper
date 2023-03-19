@@ -70,7 +70,7 @@ function Minesweeper:gameBegin()
     self.StartedAt = time()
 
     NetworkLib:send(GameEnum.PacketType.GameState, GameEnum.GameState.Begin.ID, {
-        Discovered = self.Board.Discovered,
+        Board = self.Board:serialize(true),
         Players = clientsToPlayers(self.Playing)
     })
     self.GameState = GameEnum.GameState.InProgress

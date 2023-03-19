@@ -23,10 +23,13 @@ local Maid = require(shared.Common.Maid)
 local Timer = require(shared.Common.Timer)
 local NetworkLib = require(shared.Common.NetworkLib)
 local Sound = require(shared.Common.Sound)
+local TableUtils = require(shared.Common.TableUtils)
+
 local log, logwarn = require(shared.Common.Log)(script:GetFullName())
 
 local Board = require(shared.Game.Board)
 local CursorManager = require(_G.Client.Game.CursorManager)
+local SevenSegment = require(_G.Client.Render.SevenSegment)
 
 local CursorUpdateTimer = Timer.new(CURSOR_UPDATE_TICK)
 
@@ -60,6 +63,7 @@ local function placeFlag(game, state)
                 NetworkLib:send(GameEnum.PacketType.SetFlagState, tile.X, tile.Y, flagState)
                 game.Board:render()
             end
+            
             
             return flagState
         end
@@ -115,6 +119,11 @@ function MinesweeperClient.new(client, options)
         Board = nil,
         Victory = false,
         CursorManager = CursorManager.new(self),
+        
+        Displays = {
+            Timer = SevenSegment.new(8),
+            Flags = SevenSegment.new(4),
+        },
 
         Gui = shared.Assets.Gui.Game:Clone(),
         
@@ -129,6 +138,9 @@ function MinesweeperClient.new(client, options)
     setmetatable(self, MinesweeperClient)
     Maid.watch(self)
     
+    self.Displays.Timer.AnchorPoint = Vector2.new(0, 0)
+    self.Displays.Flags.AnchorPoint = Vector2.new(1, 0)
+
     self.Gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
     self.UI = require(_G.Client.Game.UI)(self)
     self.CursorManager = CursorManager.new(self)
@@ -150,16 +162,19 @@ function MinesweeperClient:isPlaying()
     return false
 end
 
-function MinesweeperClient:gameBegin(options)
+function MinesweeperClient:gameBegin(gameInfo)
     if self.Board and self.Board["destroy"] then
         self.Board:destroy()
     end
 
-    self.Playing = options.Players or {}
+    self.Playing = gameInfo.Players or {}
     
     self.Camera.FieldOfView = 30
     self.Board = Board.new()
-    self.Board.Discovered = options.Discovered
+    for property, value in pairs(gameInfo.Board) do
+        self.Board[property] = value
+    end
+
     self.GameState = GameEnum.GameState.InProgress
     self._state.CameraHeight = 100 -- TODO: calculate
     self._state.Scrolls = 0
@@ -167,12 +182,23 @@ function MinesweeperClient:gameBegin(options)
 
     self.Board:render()
     self.Victory = false
+    
 
     self.Camera:updateOffset(1, self._state.CameraCFrame)
     self.Camera:updateOffset(2, CFrame.new())
     self.Camera:setCFrame(CFrame.new(0, self._state.CameraHeight, 0) * CFrame.Angles(-math.pi/2, 0, 0))
 
     self.Gui:WaitForChild("Screen"):WaitForChild("SpectatingBar").Visible = not self:isPlaying()
+
+    local extents = self.Board:getExtents()
+    local position = self.Board:getPosition()
+    local timerCF = CFrame.new(position.X + extents.X / 2, position.Y, position.Z - extents.Z / 2 - 1)
+    local flagsCF = CFrame.new(position.X - extents.X / 2, position.Y, position.Z - extents.Z / 2 - 1)
+    
+    self.Displays.Timer:setCFrame(timerCF)
+    self.Displays.Flags:setCFrame(flagsCF)
+
+    self.Displays.Flags:update(self.Board.MineCount - TableUtils.getSize(self.Board.Flags))
 end
 
 local function _compose(messages, patterns)
@@ -376,6 +402,17 @@ function MinesweeperClient:bind()
             debug.profileend("game-camera")
         end
     )
+
+    self._binds.Camera = RunService:BindToRenderStep(
+        "BoardDisplayUpdates",
+        1000,
+        function(dt)
+            if self.Client.Paused then return end
+            if not self.Board then return end
+
+            self.Displays.Timer:update(os.clock() - self.Board.StartedAt)
+        end
+    )
 end
 
 local function _explodeBoard(game, sound)
@@ -421,34 +458,43 @@ function MinesweeperClient:route(packet, ...)
     local args = {...}
     if packet == GameEnum.PacketType.SetFlagState then
         local x, y, state, owner = args[1], args[2], args[3], args[4]
+
         self.Board:setFlag(x, y, state, owner)
         self.Board:render()
         
+        self.Displays.Flags:update(self.Board.MineCount - TableUtils.getSize(self.Board.Flags))
+
         if owner == Players.LocalPlayer then return end
         playSound(self, shared.Assets.Sounds.Flag)
+
+
     elseif packet == GameEnum.PacketType.Discover then
         local owner, boardDiscovered = args[1], args[2]
+
         self.Board.Discovered = boardDiscovered
         self.Board:render()
 
         if owner == Players.LocalPlayer then return end
         playSound(self, shared.Assets.Sounds.Discover)
+
     elseif packet == GameEnum.PacketType.GameState then
         local enumID = args[1]
         local stateEnum = GameEnum.GameState(enumID)
+
         if stateEnum == GameEnum.GameState.Begin or stateEnum == GameEnum.GameState.InProgress then
             self:gameBegin(args[2])
             if args[2].Adhoc then
-                self.Board.Discovered = args[2].Board.Discovered
-                self.Board.Flags = args[2].Board.Flags
                 self.Board:render()
             end
         elseif stateEnum == GameEnum.GameState.GameOver then
             self:gameEnd(args[2], args[3])
         end
+
     elseif packet == GameEnum.PacketType.PlaySound then
         local instance, position = args[1], args[2]
+
         _playSharedSound(self, instance, position)
+
     end
 end
 
@@ -462,4 +508,5 @@ return function(client, options)
     end)
     
     NetworkLib:send(GameEnum.PacketType.Ready)
+    
 end
