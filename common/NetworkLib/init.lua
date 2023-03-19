@@ -97,7 +97,7 @@ end
 function NetworkLib:listen(callback)
     if isClient then
         return NetworkLib:_listenHandler(remotes.Signal.OnClientEvent, callback)
-    elseif isServer then
+    else
         return NetworkLib:_listenHandler(remotes.Signal.OnServerEvent, callback)
     end
 end

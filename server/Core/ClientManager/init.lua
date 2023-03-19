@@ -3,6 +3,9 @@
 --]]
 local Maid = require(shared.Common.Maid)
 local GameEnum = shared.GameEnum
+local log, logwarn = require(shared.Common.Log)(script:GetFullName())
+local TableUtils = require(shared.Common.TableUtils)
+
 
 local Players = game:GetService("Players")
 
@@ -17,13 +20,14 @@ local LEAVE_PROCEDURES_FOLDER = script.LeaveProcedures
 ---                        with
 local function orderModulesByPriority(moduleList)
     local orderedList = {}
-    for pass = 1, #GameEnum.Priority do
+    for pass = 1, TableUtils.getSize(GameEnum.Priority) do
         for _, module in pairs(moduleList) do
             if module.Priority == GameEnum.Priority(pass) then
                 table.insert(orderedList, module)
             end
         end
     end
+    
     return orderedList
 end
 
@@ -52,6 +56,7 @@ function ClientManager.new(joinProcedures, leaveProcedures)
             table.insert(procedureModules, require(procedure))
         end
         self.JoinProcedures = orderModulesByPriority(procedureModules)
+        log(2, "Loaded JoinProcedures from", JOIN_PROCEDURES_FOLDER:GetFullName(), "- address:", self.JoinProcedures)
     else
         self.JoinProcedures = joinProcedures
     end
@@ -131,7 +136,7 @@ function ClientManager:addClient(client)
     -- run them through modules in JoinProcedures
     -- they have been sorted by priority
     for _, module in pairs(self.JoinProcedures) do
-        module.Run(client)
+        coroutine.wrap(module.Run)(client)
     end
 
     table.insert(self.Clients, client)
@@ -151,7 +156,7 @@ end
 ---@param client Client
 function ClientManager:removeClient(client)
     -- run them through modules in LeaveProcedures
-    for _, module in pairs(self.JoinProcedures) do
+    for _, module in pairs(self.LeaveProcedures) do
         module.Run(client)
     end
 

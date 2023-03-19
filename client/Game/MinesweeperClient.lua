@@ -219,7 +219,7 @@ function MinesweeperClient:bindInput()
 
     self._state.Scrolls = 0
     local dragCamera, sweeping = false, false
-    local flaggingState = false
+    local flaggingState
     local moveDirX = 0
     local moveDirY = 0
 
@@ -460,4 +460,6 @@ return function(client, options)
     NetworkLib:listen(function(packet, ...)
         game:route(packet, ...)
     end)
+    
+    NetworkLib:send(GameEnum.PacketType.Ready)
 end
