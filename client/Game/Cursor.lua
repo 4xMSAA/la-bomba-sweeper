@@ -21,7 +21,7 @@ function Cursor.new(owner, GuiInstance)
       Color = PlayerChatColor(owner.Name),
       
       _renderPosition = Vector3.new(),
-      _lastChange = os.clock(),
+      _lastChange = elapsedTime(),
       _oldWorldPosition = Vector3.new()
    }
 
@@ -38,17 +38,17 @@ function Cursor:destroy()
 end
 
 function Cursor:setPosition(worldPos)
-   self._lastChange = os.clock()
+   self._lastChange = elapsedTime()
    self._oldWorldPosition = self.WorldPosition
    self.WorldPosition = worldPos
 
    local newPosition = Camera:WorldToViewportPoint(self.WorldPosition)
-   self.Position = Vector2.new(newPosition)
+   self.Position = Vector2.new(newPosition.X, newPosition.Y)
 
 end
 
 function Cursor:update()
-   local dt = math.min(1, (os.clock() - self._lastChange) / CURSOR_UPDATE_TICK)
+   local dt = math.min(1, (elapsedTime() - self._lastChange) / CURSOR_UPDATE_TICK)
    self._renderPosition = self._oldWorldPosition:lerp(self.WorldPosition, dt)
 
    local translatedPosition, isInView = Camera:WorldToViewportPoint(self._renderPosition)

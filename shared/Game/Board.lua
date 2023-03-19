@@ -37,7 +37,7 @@ function Board.new(options, renderOptions)
         Flags = {},
         Mines = {},
         MineCount = 0,
-        StartedAt = os.clock(),
+        StartedAt = os.time(os.date("!*t")),
         
         _render = {}
     }

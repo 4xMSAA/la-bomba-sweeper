@@ -131,15 +131,18 @@ return function(server, options)
             game:adhocClient(client)
         end
         
+        print(game.Cursors)
         for clientID, _ in pairs(game.Cursors) do
+            log(2, "sending cursor from", clientID, "to", client.Name)
             NetworkLib:sendTo(
                 client, 
                 GameEnum.PacketType.CursorUpdate,
                 "add",
-                self.ClientManager:getClientByID(clientID)
+                game.ClientManager:getClientByID(clientID)
             )
         end
 
+        game.Cursors[client.ID] = Vector3.new()
         NetworkLib:send(GameEnum.PacketType.CursorUpdate, "add", client)
     end)
     

@@ -143,6 +143,7 @@ function MinesweeperClient.new(client, options)
 
     self.Gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
     self.UI = require(_G.Client.Game.UI)(self)
+
     self.CursorManager = CursorManager.new(self)
     self.CursorManager:listen()
     
@@ -348,6 +349,23 @@ function MinesweeperClient:bindInput()
             self._state.CameraCFrame = 
                 self._state.CameraCFrame * 
                 CFrame.new(moveDirX * CAMERA_SENSITIVITY_X * dt * 200, moveDirY * CAMERA_SENSITIVITY_Y * dt * 200, 0)
+            local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = self._state.CameraCFrame:components()
+            local extents = self.Board:getExtents() 
+            local pos = self.Board:getPosition()
+            local boundX = math.min(
+                math.max(
+                    pos.X - extents.X / 2, x
+                ),
+                pos.X + extents.X / 2
+            )
+            local boundY = math.min(
+                math.max(
+                    pos.Z - extents.Z / 2, y
+                ),
+                pos.Z + extents.Z / 2
+            )
+
+            self._state.CameraCFrame = CFrame.new(boundX, boundY, z, r00, r01, r02, r10, r11, r12, r20, r21, r22)
             self.Camera:updateOffset(1, self._state.CameraCFrame)
             debug.profileend("game-wasd-camera")
         end
@@ -410,7 +428,7 @@ function MinesweeperClient:bind()
             if self.Client.Paused then return end
             if not self.Board then return end
 
-            self.Displays.Timer:update(os.clock() - self.Board.StartedAt)
+            self.Displays.Timer:update(os.time(os.date("!*t")) - self.Board.StartedAt)
         end
     )
 end

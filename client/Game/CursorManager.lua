@@ -9,6 +9,8 @@ local GameEnum = shared.GameEnum
 local Maid = require(shared.Common.Maid)
 local NetworkLib = require(shared.Common.NetworkLib)
 local Cursor = require(_G.Client.Game.Cursor)
+local log, logwarn = require(shared.Common.Log)(script:GetFullName())
+
 
 ---Keeps track of all cursors in the game, having responsibility of networking as well
 ---@class CursorManager
@@ -38,7 +40,6 @@ function CursorManager:getNearestCursor()
     local mouseLoc = UIS:GetMouseLocation()
     
     for _, cursor in pairs(self.Cursors) do
-        print((cursor.Position - mouseLoc).magnitude)
         if cursor.Visible and (cursor.Position - mouseLoc).magnitude < CURSOR_THRESHOLD_PX then
             return cursor
         end
@@ -86,9 +87,11 @@ function CursorManager:listen()
             if owner.ID == Players.LocalPlayer.UserId then return end
 
             self:createNewCursor(owner)
+            log(2, "received cursor from", owner.ID)
         elseif status == "remove" then
             local id = args[1]
             self:removeCursorByID(tonumber(id))
+            log(2, "removing cursor from", id)
         end
     end)
 end
