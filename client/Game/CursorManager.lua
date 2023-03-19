@@ -38,11 +38,7 @@ function CursorManager:getNearestCursor()
     local mouseLoc = UIS:GetMouseLocation()
     
     for _, cursor in pairs(self.Cursors) do
-        if cursor.Visible 
-            and cursor.Position.X + CURSOR_THRESHOLD_PX > mouseLoc.X
-            and cursor.Position.Y + CURSOR_THRESHOLD_PX > mouseLoc.Y
-            and cursor.Position.X - CURSOR_THRESHOLD_PX < mouseLoc.X
-            and cursor.Position.Y - CURSOR_THRESHOLD_PX < mouseLoc.Y
+        if cursor.Visible and (cursor.Position - mouseLoc).magnitude < CURSOR_THRESHOLD_PX
         then
             return cursor
         end
@@ -87,7 +83,7 @@ function CursorManager:listen()
         elseif status == "add" then
 
             local owner = args[1]
-            if owner.ID == Players.LocalPlayer.UserId then return end
+            -- if owner.ID == Players.LocalPlayer.UserId then return end
 
             self:createNewCursor(owner)
         elseif status == "remove" then
@@ -99,7 +95,7 @@ end
 
 function CursorManager:update()
     for _, cursor in pairs(self.Cursors) do
-        cursor:setPosition(cursor.WorldPosition, true)
+        cursor:update()
     end
 end
 

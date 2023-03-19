@@ -341,7 +341,7 @@ function MinesweeperClient:bind()
             local nearestCursor = self.CursorManager:getNearestCursor()
             if nearestCursor then
                 cursorInfo.Visible = true
-                cursorInfo.DisplayName.Text = nearestCursor.Owner.Name
+                cursorInfo.DisplayName.Text = nearestCursor.Owner.Instance.DisplayName
                 cursorInfo.DisplayName.TextColor3 = nearestCursor.Color
             end
             

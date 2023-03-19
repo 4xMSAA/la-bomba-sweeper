@@ -37,7 +37,7 @@ for _, enumModule in pairs(shared.Source:WaitForChild("GameEnum"):GetChildren())
     shared.GameEnum[enumModule.Name] = require(enumModule)
 end
 
--- define global paths we weant quick access to
+-- define global paths we want quick access to
 _G.Workspace = createSharedFolder("GameFolder", workspace)
 
 -- less commonly used accesses
