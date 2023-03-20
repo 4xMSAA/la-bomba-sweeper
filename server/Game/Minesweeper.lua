@@ -81,14 +81,14 @@ function Minesweeper:gameEnd(victory, explosionAt, who)
     self.Playing = {}
     self.GameState = GameEnum.GameState.CleanUp
 
-    if victory then
+    if victory == true then
         playSoundFrom(shared.Assets.Sounds.Victory)
         NetworkLib:send(GameEnum.PacketType.GameState,
             GameEnum.GameState.GameOver.ID,
             true,
             {Discovered = self.Board.Discovered, Mines = self.Board.Mines, TimeTaken = time() - self.StartedAt}
         )
-    else
+    elseif victory == false then
         playSoundFrom(shared.Assets.Sounds.Explode)
         NetworkLib:send(
             GameEnum.PacketType.GameState, 
@@ -96,6 +96,12 @@ function Minesweeper:gameEnd(victory, explosionAt, who)
             false,
             -- TODO: ugly hack. fix auto serialize inside tables
             {Discovered = self.Board.Discovered, ExplosionAt = explosionAt, Mines = self.Board.Mines, Who = who:serialize()}
+        )
+    else
+        NetworkLib:send(GameEnum.PacketType.GameState,
+            GameEnum.GameState.GameOver.ID,
+            "neutral",
+            {Discovered = self.Board.Discovered, Mines = self.Board.Mines, TimeTaken = time() - self.StartedAt}
         )
     end
     
@@ -131,7 +137,6 @@ return function(server, options)
             game:adhocClient(client)
         end
         
-        print(game.Cursors)
         for clientID, _ in pairs(game.Cursors) do
             log(2, "sending cursor from", clientID, "to", client.Name)
             NetworkLib:sendTo(
@@ -147,7 +152,17 @@ return function(server, options)
     end)
     
     game.ClientManager.ClientRemoving:connect(function(client)
+        for i, playingClient in pairs(game.Playing) do
+            if playingClient == client  then
+                table.remove(game.Playing, i)
+            end
+        end
+
         NetworkLib:send(GameEnum.PacketType.CursorUpdate, "remove", client.ID)
+        
+        if #game.Playing == 0 then
+            game:gameEnd("neutral")
+        end
     end)
     
     -- TODO: ugly... fix later

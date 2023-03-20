@@ -200,6 +200,9 @@ function MinesweeperClient:gameBegin(gameInfo)
     self.Displays.Flags:setCFrame(flagsCF)
 
     self.Displays.Flags:update(self.Board.MineCount - TableUtils.getSize(self.Board.Flags))
+    
+    self.BoardLastKnownExtents = self.Board:getExtents()
+    self.BoardLastKnownPosition = self.Board:getPosition()
 end
 
 local function _compose(messages, patterns)
@@ -217,18 +220,20 @@ function MinesweeperClient:gameEnd(victory, extraData)
 
     self.Board.Discovered = extraData.Discovered
     self.Board.Mines = extraData.Mines
-    if victory then
+    if victory == true then
         self.Victory = true
         self.UI.createMessage(
             _compose(VICTORY_MESSAGES) .. " (".. ("%.2f"):format(tostring(extraData.TimeTaken)) .. "s)", 
             VICTORY_MESSAGE_COLOR
         )
-    else
+    elseif victory == false then
         self.Board.ExplosionAt = extraData.ExplosionAt
         self.UI.createMessage(
             _compose(FAIL_MESSAGES, {name = extraData.Who.DisplayName}), 
             FAIL_MESSAGE_COLOR
         )
+    else
+        self.UI.createMessage("Something weird happened... Restarting.", Color3.new(0.5, 0.5, 0.5))
     end
 
     self.Board:render()
@@ -303,8 +308,8 @@ function MinesweeperClient:bindInput()
                     self._state.CameraCFrame *
                     CFrame.new(input.Delta.X * CAMERA_SENSITIVITY_X, -input.Delta.Y * CAMERA_SENSITIVITY_Y, 0)
                 local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = self._state.CameraCFrame:components()
-                local extents = self.Board:getExtents() 
-                local pos = self.Board:getPosition()
+                local extents = self.BoardLastKnownExtents 
+                local pos = self.BoardLastKnownPosition
                 local boundX = math.min(
                     math.max(
                         pos.X - extents.X / 2, x
@@ -344,14 +349,15 @@ function MinesweeperClient:bindInput()
         function(dt)
             dt = math.min(1, dt)
             if self.Client.Paused then return end
+            if not self.Board or not self.Board.getExtents then return end
 
             debug.profilebegin("game-wasd-camera")
             self._state.CameraCFrame = 
                 self._state.CameraCFrame * 
                 CFrame.new(moveDirX * CAMERA_SENSITIVITY_X * dt * 200, moveDirY * CAMERA_SENSITIVITY_Y * dt * 200, 0)
             local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = self._state.CameraCFrame:components()
-            local extents = self.Board:getExtents() 
-            local pos = self.Board:getPosition()
+            local extents = self.BoardLastKnownExtents 
+            local pos = self.BoardLastKnownPosition
             local boundX = math.min(
                 math.max(
                     pos.X - extents.X / 2, x
@@ -415,6 +421,7 @@ function MinesweeperClient:bind()
         function(dt)
             if self.Client.Paused then return end
 
+            workspace.CurrentCamera.CameraType = "Scriptable" --idk why i have to force this... roblox!!! yay!!!
             debug.profilebegin("game-camera")
             self.Camera:updateView(dt)
             debug.profileend("game-camera")
@@ -427,8 +434,9 @@ function MinesweeperClient:bind()
         function(dt)
             if self.Client.Paused then return end
             if not self.Board then return end
-
-            self.Displays.Timer:update(os.time(os.date("!*t")) - self.Board.StartedAt)
+            if self.GameState == GameEnum.GameState.InProgress then
+                self.Displays.Timer:update(os.time(os.date("!*t")) - self.Board.StartedAt)
+            end
         end
     )
 end
