@@ -218,8 +218,9 @@ end
 function MinesweeperClient:gameEnd(victory, extraData)
     self.GameState = GameEnum.GameState.CleanUp
 
-    self.Board.Discovered = extraData.Discovered
-    self.Board.Mines = extraData.Mines
+    self.Board.Discovered = extraData.Discovered or self.Board.Discovered
+    self.Board.Mines = extraData.Mines or {}
+
     if victory == true then
         self.Victory = true
         self.UI.createMessage(
@@ -237,6 +238,7 @@ function MinesweeperClient:gameEnd(victory, extraData)
     end
 
     self.Board:render()
+
     local board = self.Board
     task.wait(5)
     if self.GameState == GameEnum.GameState.CleanUp then
@@ -480,6 +482,16 @@ local function _playSharedSound(game, instance, position)
     sound:play()
 end
 
+local function patchNetworkedBoard(locallyDiscovered, networkDiscovered)
+    for x, row in pairs(networkDiscovered) do
+        for y, tile in pairs(row) do
+            locallyDiscovered[x][y] = tile > BOARD_UNDISCOVERED and tile or locallyDiscovered[x][y]
+        end
+    end
+
+    return locallyDiscovered
+end
+
 function MinesweeperClient:route(packet, ...)
     local args = {...}
     if packet == GameEnum.PacketType.SetFlagState then
@@ -497,8 +509,10 @@ function MinesweeperClient:route(packet, ...)
     elseif packet == GameEnum.PacketType.Discover then
         local owner, boardDiscovered = args[1], args[2]
 
-        self.Board.Discovered = boardDiscovered
+        self.Board.Discovered = patchNetworkedBoard(self.Board.Discovered, boardDiscovered)
         self.Board:render()
+
+        self.Displays.Flags:update(self.Board.MineCount - TableUtils.getSize(self.Board.Flags))
 
         if owner == Players.LocalPlayer then return end
         playSound(self, shared.Assets.Sounds.Discover)
@@ -507,13 +521,16 @@ function MinesweeperClient:route(packet, ...)
         local enumID = args[1]
         local stateEnum = GameEnum.GameState(enumID)
 
-        if stateEnum == GameEnum.GameState.Begin or stateEnum == GameEnum.GameState.InProgress then
-            self:gameBegin(args[2])
-            if args[2].Adhoc then
-                self.Board:render()
-            end
-        elseif stateEnum == GameEnum.GameState.GameOver then
+        if stateEnum == GameEnum.GameState.GameOver then
             self:gameEnd(args[2], args[3])
+            return
+        end
+
+        self:gameBegin(args[2])
+
+        if args[2].Adhoc then
+            self.Board:render()
+            self.Displays.Flags:update(self.Board.MineCount - TableUtils.getSize(self.Board.Flags))
         end
 
     elseif packet == GameEnum.PacketType.PlaySound then
@@ -534,5 +551,4 @@ return function(client, options)
     end)
     
     NetworkLib:send(GameEnum.PacketType.Ready)
-    
 end

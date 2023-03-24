@@ -1,4 +1,7 @@
 local CURSOR_UPDATE_TICK = _G.TIMERS.CURSOR_UPDATE
+local BADGES = _G.BADGES
+
+local BadgeService = game:GetService("BadgeService")
 
 local Maid = require(shared.Common.Maid)
 local NetworkLib = require(shared.Common.NetworkLib)
@@ -65,7 +68,7 @@ function Minesweeper:gameBegin()
     
     self.Board = Board.new()
     self.Board:generate()
-    -- if config.FreeZeroStart then
+
     self.Board:zeroStart()
     self.StartedAt = time()
 
@@ -78,10 +81,13 @@ function Minesweeper:gameBegin()
 end
 
 function Minesweeper:gameEnd(victory, explosionAt, who)
-    self.Playing = {}
     self.GameState = GameEnum.GameState.CleanUp
 
     if victory == true then
+        for _, client in pairs(self.Playing) do
+            BadgeService:AwardBadge(client.ID, BADGES.ONE_VICTORY)
+        end
+
         playSoundFrom(shared.Assets.Sounds.Victory)
         NetworkLib:send(GameEnum.PacketType.GameState,
             GameEnum.GameState.GameOver.ID,
@@ -94,7 +100,6 @@ function Minesweeper:gameEnd(victory, explosionAt, who)
             GameEnum.PacketType.GameState, 
             GameEnum.GameState.GameOver.ID,
             false,
-            -- TODO: ugly hack. fix auto serialize inside tables
             {Discovered = self.Board.Discovered, ExplosionAt = explosionAt, Mines = self.Board.Mines, Who = who:serialize()}
         )
     else
@@ -104,6 +109,8 @@ function Minesweeper:gameEnd(victory, explosionAt, who)
             {Discovered = self.Board.Discovered, Mines = self.Board.Mines, TimeTaken = time() - self.StartedAt}
         )
     end
+
+    self.Playing = {}
     
     self.Board:destroy()
     task.wait(6)
@@ -133,6 +140,8 @@ return function(server, options)
     game.ClientManager.ClientAdded:connect(function(client)
         repeat task.wait() until client.IsReady
 
+        BadgeService:AwardBadge(client.ID, BADGES.WELCOME)
+
         if game.GameState == GameEnum.GameState.InProgress then
             game:adhocClient(client)
         end
@@ -158,6 +167,7 @@ return function(server, options)
             end
         end
 
+        game.Cursors[client.ID] = nil
         NetworkLib:send(GameEnum.PacketType.CursorUpdate, "remove", client.ID)
         
         if #game.Playing == 0 then

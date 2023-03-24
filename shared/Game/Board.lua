@@ -175,6 +175,7 @@ function Board:setFlag(x, y, state, owner)
                 end
             end
         end
+
         -- prevent users removing other people's flags when they have been recently placed down
         for i, flag in pairs(self.Flags) do
             if flag.X == x and flag.Y == y then
@@ -212,6 +213,13 @@ function Board:discover(startX, startY)
                         end
                     end
                 end
+            end
+        end
+        
+        for _, flag in pairs(self.Flags) do
+            local x, y = flag.X, flag.Y
+            if self:getTile(x, y) ~= BOARD_UNDISCOVERED and self:getTile(x, y) ~= "Mine" then
+                self:setFlag(x, y, false, nil)
             end
         end
 

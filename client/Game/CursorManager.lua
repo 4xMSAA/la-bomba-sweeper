@@ -52,7 +52,7 @@ function CursorManager:createNewCursor(owner)
 end
 
 function CursorManager:removeCursorByID(id)
-    self.Cursors[id]:Destroy()
+    self.Cursors[id]:destroy()
     self.Cursors[id] = nil
 end
 

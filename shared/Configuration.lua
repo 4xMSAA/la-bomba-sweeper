@@ -19,6 +19,11 @@ return {
         }
     },
     
+    BADGES = {
+        WELCOME = 2142864902,
+        ONE_VICTORY = 2142865774
+    },
+    
     TIMERS = {
         CURSOR_UPDATE = 0.04
     },
