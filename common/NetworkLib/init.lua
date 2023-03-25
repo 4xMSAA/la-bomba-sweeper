@@ -14,7 +14,64 @@ local isServer = RunService:IsServer()
 ---
 ---@class NetworkLib
 local NetworkLib = {}
+NetworkLib._packetQueue = {}  -- FIFO
 NetworkLib._activeListeners = {}
+NetworkLib._listeningFor = {}
+NetworkLib._queueListener = nil
+
+local function listenQueue(id, ...)
+    local receivedEnum = NetworkLib:_toEnum(id)
+    if NetworkLib._listeningFor[receivedEnum] then return end
+
+    NetworkLib:_queue(receivedEnum, ...)
+end
+local function listenQueueServer(player, id, ...)
+    local receivedEnum = NetworkLib:_toEnum(id)
+    if NetworkLib._listeningFor[receivedEnum] then return end
+
+    NetworkLib:_queue(receivedEnum, player, ...)
+end
+
+local function initListenQueue()
+    NetworkLib._queueListener = 
+        isClient and remotes.Signal.OnClientEvent:Connect(listenQueue) 
+        or isServer and remotes.Signal.OnServerEvent:Connect(listenQueueServer)
+end
+
+local function loadQueue(enum, callback, passthrough)
+    local packetData = NetworkLib:_dequeue(enum, passthrough)
+    if not packetData then return end
+
+    if isClient then
+        callback(unpack(packetData))
+    elseif isServer and not passthrough then
+        local player = table.remove(packetData, 1)
+        callback(player, enum, unpack(packetData))
+    elseif isServer and passthrough then
+        local player = packetData[1]
+        local copy = {}
+        for i,v in pairs(packetData) do
+            if i > 1 then
+                table.insert(copy, v)
+            end
+        end
+        callback(player, enum, unpack(copy))
+    end
+end
+
+-- TODO: queue packets with listenFor and consume, pass through with listen
+function NetworkLib:_queue(enum, ...)
+    self._packetQueue[enum] = self._packetQueue[enum] or {}
+    table.insert(self._packetQueue[enum], {...})
+end
+
+function NetworkLib:_dequeue(enum, passthrough)
+    self._packetQueue[enum] = self._packetQueue[enum] or {}
+
+    if #self._packetQueue[enum] < 1 then return end
+
+    return passthrough and self._packetQueue[enum][1] or table.remove(self._packetQueue[enum], 1)
+end
 
 function NetworkLib:_toEnum(id)
     return GameEnum.PacketType(id)
@@ -58,12 +115,15 @@ function NetworkLib:_listenHandler(ev, callback, listenFor)
         signal =
             ev:connect(
             function(id, ...)
+                local passthrough = nil
                 local receivedEnum = NetworkLib:_toEnum(id)
                 log(3, "LISTEN: enum: ", receivedEnum and receivedEnum.Name or "nil", "contents:", ...)
                 if listenFor and receivedEnum == listenFor then
-                    callback(...)
+                    passthrough = callback(...)
+                    loadQueue(receivedEnum, callback, passthrough)
                 elseif not listenFor then
-                    callback(receivedEnum, ...)
+                    passthrough = callback(receivedEnum, ...)
+                    loadQueue(receivedEnum, callback, passthrough or true)
                 end
             end
         )
@@ -71,24 +131,34 @@ function NetworkLib:_listenHandler(ev, callback, listenFor)
         signal =
             ev:connect(
             function(player, id, ...)
+                local passthrough = nil
                 local receivedEnum = NetworkLib:_toEnum(id)
                 log(3, "LISTEN: from:", player, "enum:", receivedEnum and receivedEnum.Name or "nil", "contents:", ...)
                 if listenFor and receivedEnum == listenFor then
-                    callback(player, ...)
+                    passthrough = callback(player, ...)
+                    loadQueue(receivedEnum, callback, passthrough)
                 elseif not listenFor then
-                    callback(player, receivedEnum, ...)
+                    passthrough = callback(player, receivedEnum, ...)
+                    loadQueue(receivedEnum, callback, passthrough or false)
                 end
             end
         )
     end
 
     -- register the signal
-    NetworkLib._activeListeners[signal] = true
+    NetworkLib._activeListeners[signal] = callback
+    if listenFor then NetworkLib._listeningFor[listenFor] = true end
+
+    -- dequeue all packets regarding the enum
 
     -- TODO: figure out how to handle disconnnects, observe behaviour if
     -- disconnect makes signal nil or keeps reference?
 
     return signal
+end
+
+function NetworkLib:_init()
+    initListenQueue()
 end
 
 ---Catch-all signal
@@ -152,5 +222,7 @@ function NetworkLib:sendToExcept(player, enum, ...)
         end
     end
 end
+
+NetworkLib:_init()
 
 return NetworkLib
