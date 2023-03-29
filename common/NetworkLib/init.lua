@@ -14,6 +14,7 @@ local isServer = RunService:IsServer()
 ---
 ---@class NetworkLib
 local NetworkLib = {}
+NetworkLib.useQueueing = isClient and true or isServer and false
 NetworkLib._packetQueue = {}  -- FIFO
 NetworkLib._activeListeners = {}
 NetworkLib._listeningFor = {}
@@ -39,6 +40,8 @@ local function initListenQueue()
 end
 
 local function loadQueue(enum, callback, passthrough)
+    if not NetworkLib.useQueueing then return end
+
     local packetData = NetworkLib:_dequeue(enum, passthrough)
     if not packetData then return end
 
@@ -61,11 +64,15 @@ end
 
 -- TODO: queue packets with listenFor and consume, pass through with listen
 function NetworkLib:_queue(enum, ...)
+    if not self.useQueueing then return end
+    
     self._packetQueue[enum] = self._packetQueue[enum] or {}
     table.insert(self._packetQueue[enum], {...})
 end
 
 function NetworkLib:_dequeue(enum, passthrough)
+    if not self.useQueueing then return end
+
     self._packetQueue[enum] = self._packetQueue[enum] or {}
 
     if #self._packetQueue[enum] < 1 then return end
