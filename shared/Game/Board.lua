@@ -346,7 +346,7 @@ function Board:renderCreate(renderOptions)
     end
 
     self._render.extentsSize = self._render.model:GetExtentsSize()
-    self._render.position = self._render.model:GetPivot()
+    self._render.position = CFrame.new(self._render.model:GetPivot().p)
 end
 
 function Board:getRenderModel()

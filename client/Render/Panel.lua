@@ -30,7 +30,7 @@ function Panel:setSize(vec2)
     assert(typeof(vec2) == "Vector2", "can only use Vector2 for Panel size")
 
     self.Size = vec2
-    self.Instance.Size = Vector3.new(self.Size.X, self.Size.Y, 1)
+    self.Instance.Size = Vector3.new(math.floor(self.Size.X), math.floor(self.Size.Y), 1)
 end
 
 function Panel:setSizeWithBorder(vec2)
@@ -38,8 +38,7 @@ function Panel:setSizeWithBorder(vec2)
 
     local pps = self.Instance.EffectsPanel.PixelsPerStud
     local translatedSize = vec2 + Vector2.new(pps * 2, pps * 2)
-    self.Size = translatedSize
-    self.Instance.Size = Vector3.new(self.Size.X, self.Size.Y, 1)
+    self:setSize(translatedSize)
 end
 
 function Panel:getBorderSize()

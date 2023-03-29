@@ -34,6 +34,8 @@ local Panel = require(_G.Client.Render.Panel)
 
 local CursorUpdateTimer = Timer.new(CURSOR_UPDATE_TICK)
 
+local firstGame = true
+
 local function playSound(game, folder)
     local len = #folder:GetChildren()
     local sound = folder:GetChildren()[math.random(len)]
@@ -146,7 +148,7 @@ function MinesweeperClient.new(client, options)
     self.Displays.Timer.AnchorPoint = Vector2.new(0, 0)
     self.Displays.Flags.AnchorPoint = Vector2.new(1, 0)
     
-    self.Panels.Board.AnchorPoint = Vector2.new(0, 0.5)
+    self.Panels.Board.AnchorPoint = Vector2.new(0.5, 0)
 
     self.Gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
     self.UI = require(_G.Client.Game.UI)(self)
@@ -170,6 +172,7 @@ function MinesweeperClient:isPlaying()
     return false
 end
 
+
 function MinesweeperClient:gameBegin(gameInfo)
     if self.Board and self.Board["destroy"] then
         self.Board:destroy()
@@ -185,16 +188,17 @@ function MinesweeperClient:gameBegin(gameInfo)
 
     self.GameState = GameEnum.GameState.InProgress
     self._state.CameraHeight = 100 -- TODO: calculate
-    self._state.Scrolls = 0
-    self._state.CameraCFrame = CFrame.new()
 
     self.Board:render()
     self.Victory = false
     
-
-    self.Camera:updateOffset(1, self._state.CameraCFrame)
-    self.Camera:updateOffset(2, CFrame.new())
-    self.Camera:setCFrame(CFrame.new(0, self._state.CameraHeight, 0) * CFrame.Angles(-math.pi/2, 0, 0))
+    if firstGame then
+        self._state.CameraCFrame = CFrame.new()
+        self._state.Scrolls = 0
+        self.Camera:updateOffset(1, self._state.CameraCFrame)
+        self.Camera:updateOffset(2, CFrame.new())
+        self.Camera:setCFrame(CFrame.new(0, self._state.CameraHeight, 0) * CFrame.Angles(-math.pi/2, 0, 0))
+    end
 
     self.Gui:WaitForChild("Screen"):WaitForChild("SpectatingBar").Visible = not self:isPlaying()
 
@@ -208,8 +212,8 @@ function MinesweeperClient:gameBegin(gameInfo)
     
     local displaySizeY = self.Displays.Timer:getSize().Z
     
-    self.Panels.Board:setSizeWithBorder(Vector2.new(extents.X + displaySizeY + 1, extents.Z))
-    self.Panels.Board:setCFrame(position * CFrame.new(extents.Z / 2 + self.Panels.Board:getBorderSize(), 0, 0) * CFrame.new(0, -1, 0))
+    self.Panels.Board:setSizeWithBorder(Vector2.new(extents.X, extents.Z + displaySizeY + 1))
+    self.Panels.Board:setCFrame(position * CFrame.new(0, 0, extents.Z / 2 + self.Panels.Board:getBorderSize()) * CFrame.new(0, -1, 0))
 
     self.Panels.Board.Instance.Parent = _G.Path.FX
 
@@ -218,6 +222,7 @@ function MinesweeperClient:gameBegin(gameInfo)
     self.BoardLastKnownExtents = self.Board:getExtents()
     self.BoardLastKnownPosition = self.Board:getPosition()
 
+    firstGame = false
 end
 
 local function _compose(messages, patterns)
