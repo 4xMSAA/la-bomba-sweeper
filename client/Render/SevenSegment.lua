@@ -22,7 +22,7 @@ end
 local SevenSegment = {}
 SevenSegment.__index = SevenSegment
 
-function SevenSegment.new(slots)
+function SevenSegment.new(slots, parent)
     assert(typeof(slots) == "number" and slots > 1, "there must be atleast one slot for a display")
     local self = {
         Displays = {},
@@ -41,7 +41,6 @@ function SevenSegment.new(slots)
     model.Name = "SevenSegmentDisplay"
     self.Model = model
     
-    self.Model.Parent = _G.Path.FX
 
     for slot = 0, slots - 1 do
         local display = SevenSegmentAsset:Clone()
@@ -54,6 +53,7 @@ function SevenSegment.new(slots)
     Maid.watch(self)
 
     self:update(0)
+    self.Model.Parent = parent
 
     return self
 end
@@ -63,6 +63,10 @@ function SevenSegment:setCFrame(cf)
     local extents = self.Model:GetExtentsSize() / 2
     local offset = CFrame.new(-extents.X + (extents.X * self.AnchorPoint.X * 2), 0, -extents.Z + (extents.Z * self.AnchorPoint.Y * 2))
     self.Model:PivotTo(self.CFrame * offset)
+end
+
+function SevenSegment:getSize()
+    return self.Model:GetExtentsSize()
 end
 
 function SevenSegment:blank()

@@ -30,6 +30,7 @@ local log, logwarn = require(shared.Common.Log)(script:GetFullName())
 local Board = require(shared.Game.Board)
 local CursorManager = require(_G.Client.Game.CursorManager)
 local SevenSegment = require(_G.Client.Render.SevenSegment)
+local Panel = require(_G.Client.Render.Panel)
 
 local CursorUpdateTimer = Timer.new(CURSOR_UPDATE_TICK)
 
@@ -121,8 +122,12 @@ function MinesweeperClient.new(client, options)
         CursorManager = CursorManager.new(self),
         
         Displays = {
-            Timer = SevenSegment.new(8),
-            Flags = SevenSegment.new(4),
+            Timer = SevenSegment.new(30, _G.Path.FX),
+            Flags = SevenSegment.new(4, _G.Path.FX),
+        },
+        
+        Panels = {
+            Board = Panel.new()
         },
 
         Gui = shared.Assets.Gui.Game:Clone(),
@@ -140,6 +145,8 @@ function MinesweeperClient.new(client, options)
     
     self.Displays.Timer.AnchorPoint = Vector2.new(0, 0)
     self.Displays.Flags.AnchorPoint = Vector2.new(1, 0)
+    
+    self.Panels.Board.AnchorPoint = Vector2.new(0, 0.5)
 
     self.Gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
     self.UI = require(_G.Client.Game.UI)(self)
@@ -198,11 +205,19 @@ function MinesweeperClient:gameBegin(gameInfo)
     
     self.Displays.Timer:setCFrame(timerCF)
     self.Displays.Flags:setCFrame(flagsCF)
+    
+    local displaySizeY = self.Displays.Timer:getSize().Z
+    
+    self.Panels.Board:setSizeWithBorder(Vector2.new(extents.X + displaySizeY + 1, extents.Z))
+    self.Panels.Board:setCFrame(position * CFrame.new(extents.Z / 2 + self.Panels.Board:getBorderSize(), 0, 0) * CFrame.new(0, -1, 0))
+
+    self.Panels.Board.Instance.Parent = _G.Path.FX
 
     self.Displays.Flags:update(self.Board.MineCount - TableUtils.getSize(self.Board.Flags))
     
     self.BoardLastKnownExtents = self.Board:getExtents()
     self.BoardLastKnownPosition = self.Board:getPosition()
+
 end
 
 local function _compose(messages, patterns)
