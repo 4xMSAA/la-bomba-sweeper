@@ -170,7 +170,7 @@ return function(server, options)
         game.Cursors[client.ID] = nil
         NetworkLib:send(GameEnum.PacketType.CursorUpdate, "remove", client.ID)
         
-        if #game.Playing == 0 then
+        if #game.Playing == 0 and game.GameState == GameEnum.GameState.InProgress then
             game:gameEnd("neutral")
         end
     end)
