@@ -60,7 +60,7 @@ end
 function CursorManager:sendWorldCursor()
     local mouseLoc = UIS:GetMouseLocation()
 
-    if self._state.CursorLastPosition == mouseLoc then return end
+    if self._state.CursorLastPosition == mouseLoc or UIS:GetMouseDelta().magnitude > 0.1 then return end
     self._state.CursorLastPosition = mouseLoc
 
     local cameraRay = Camera:ViewportPointToRay(mouseLoc.X, mouseLoc.Y)
