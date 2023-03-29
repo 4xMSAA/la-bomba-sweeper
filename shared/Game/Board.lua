@@ -1,11 +1,15 @@
 local DEFAULT_RENDER_OPTIONS = _G.BOARD.RENDER
 local DEFAULT_GENERATE_OPTIONS = _G.BOARD.GENERATION
 local FLAG_OTHER_COOLDOWN = _G.FLAGGING.FLAG_PLACED_OTHER_COOLDOWN
+local FLAG_DEFAULT_COLOR = DEFAULT_RENDER_OPTIONS.FLAG_COLOR
 
 local BOARD_UNDISCOVERED = -1
 local BOARD_PENDING = -2
 
+local Players = game:GetService("Players")
+
 local Maid = require(shared.Common.Maid)
+local PlayerChatColor = require(shared.Common.PlayerChatColor)
 local GameEnum = shared.GameEnum
 local log, logwarn = require(shared.Common.Log)(script:GetFullName())
 
@@ -23,6 +27,13 @@ local function makeFlag(owner, x, y)
     }
 end
 
+local function colorContents(item, color)
+    for _, child in pairs(item:GetDescendants()) do
+        if child:IsA("BasePart") and child:GetAttribute("Colorable") then
+            child.Color = color
+        end
+    end
+ end
 
 ---board idk
 ---@class Board
@@ -422,6 +433,7 @@ function Board:render(renderOptions)
         self._render.flags[flag] = flagModel
 
         flagModel.Parent = part.Instance
+        colorContents(flagModel, Players.LocalPlayer.Name ~= flag.Owner.Name and PlayerChatColor(flag.Owner.Name) or FLAG_DEFAULT_COLOR)
         flagModel:SetPrimaryPartCFrame(part.CFrame * CFrame.new(0, part.Size.Y/2, 0))
     end
 end

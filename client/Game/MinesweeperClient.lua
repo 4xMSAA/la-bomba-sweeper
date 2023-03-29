@@ -24,6 +24,7 @@ local Timer = require(shared.Common.Timer)
 local NetworkLib = require(shared.Common.NetworkLib)
 local Sound = require(shared.Common.Sound)
 local TableUtils = require(shared.Common.TableUtils)
+local PlayerChatColor = require(shared.Common.PlayerChatColor)
 
 local log, logwarn = require(shared.Common.Log)(script:GetFullName())
 
@@ -99,6 +100,7 @@ local function updateMouseHover(game)
         if tile and game.Board:isFlagged(tile.X, tile.Y) then
             local flag = game.Board:getFlag(tile.X, tile.Y)
             flagInfo.DisplayName.Text = flag.Owner.DisplayName
+            flagInfo.DisplayName.TextColor3 = PlayerChatColor(flag.Owner.Name)
             flagInfo.Visible = flag.Owner == Players.LocalPlayer and false or true
         else
             flagInfo.Visible = false

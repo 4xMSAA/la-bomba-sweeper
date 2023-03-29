@@ -28,6 +28,13 @@ return {
         CURSOR_UPDATE = 0.04
     },
     
+    UI = {
+        COLOR_SCHEME = {
+            TRUE = Color3.fromRGB(65, 170, 0),
+            FALSE = Color3.fromRGB(200, 100, 100)
+        }
+    },
+    
     BOARD = {
         RENDER = {
             Pivot = Vector3.new(0, 0, 0),
@@ -51,7 +58,9 @@ return {
                 [6] = Color3.fromRGB(85, 255, 255),
                 [7] = Color3.fromRGB(200, 200, 0),
                 [8] = Color3.fromRGB(255, 170, 0),
-            }
+            },
+
+            FLAG_COLOR = Color3.fromRGB(196, 40, 28)
         },
         GENERATION = {
             Size = Vector2.new(25, 25),
