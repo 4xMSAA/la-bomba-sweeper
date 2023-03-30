@@ -249,6 +249,30 @@ function MinesweeperClient:gameEnd(victory, extraData)
     
 end
 
+local function _moveCamera(game, input)
+    game._state.CameraCFrame = 
+        game._state.CameraCFrame *
+        CFrame.new(input.X * CAMERA_SENSITIVITY_X, -input.Y * CAMERA_SENSITIVITY_Y, 0)
+    local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = game._state.CameraCFrame:components()
+    local extents = game.BoardLastKnownExtents 
+    local pos = game.BoardLastKnownPosition
+    local boundX = math.min(
+        math.max(
+            pos.X - extents.X / 2, x
+        ),
+        pos.X + extents.X / 2
+    )
+    local boundY = math.min(
+        math.max(
+            pos.Z - extents.Z / 2, y
+        ),
+        pos.Z + extents.Z / 2
+    )
+
+    game._state.CameraCFrame = CFrame.new(boundX, boundY, z, r00, r01, r02, r10, r11, r12, r20, r21, r22)
+    game.Camera:updateOffset(1, game._state.CameraCFrame)
+end
+
 function MinesweeperClient:bindInput()
     ContextActionService:UnbindAllActions()
 
@@ -307,27 +331,7 @@ function MinesweeperClient:bindInput()
     local function inputChangedHandler(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement then
             if dragCamera then
-                self._state.CameraCFrame = 
-                    self._state.CameraCFrame *
-                    CFrame.new(input.Delta.X * CAMERA_SENSITIVITY_X, -input.Delta.Y * CAMERA_SENSITIVITY_Y, 0)
-                local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = self._state.CameraCFrame:components()
-                local extents = self.BoardLastKnownExtents 
-                local pos = self.BoardLastKnownPosition
-                local boundX = math.min(
-                    math.max(
-                        pos.X - extents.X / 2, x
-                    ),
-                    pos.X + extents.X / 2
-                )
-                local boundY = math.min(
-                    math.max(
-                        pos.Z - extents.Z / 2, y
-                    ),
-                    pos.Z + extents.Z / 2
-                )
-
-                self._state.CameraCFrame = CFrame.new(boundX, boundY, z, r00, r01, r02, r10, r11, r12, r20, r21, r22)
-                self.Camera:updateOffset(1, self._state.CameraCFrame)
+                _moveCamera(self, input.Delta)
             end
             if flaggingState ~= nil then 
                 placeFlag(self, flaggingState)
@@ -353,29 +357,7 @@ function MinesweeperClient:bindInput()
             dt = math.min(1, dt)
             if self.Client.Paused then return end
             if not self.Board or not self.Board.getExtents then return end
-
-            debug.profilebegin("game-wasd-camera")
-            self._state.CameraCFrame = 
-                self._state.CameraCFrame * 
-                CFrame.new(moveDirX * CAMERA_SENSITIVITY_X * dt * 200, moveDirY * CAMERA_SENSITIVITY_Y * dt * 200, 0)
-            local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = self._state.CameraCFrame:components()
-            local extents = self.BoardLastKnownExtents 
-            local pos = self.BoardLastKnownPosition
-            local boundX = math.min(
-                math.max(
-                    pos.X - extents.X / 2, x
-                ),
-                pos.X + extents.X / 2
-            )
-            local boundY = math.min(
-                math.max(
-                    pos.Z - extents.Z / 2, y
-                ),
-                pos.Z + extents.Z / 2
-            )
-
-            self._state.CameraCFrame = CFrame.new(boundX, boundY, z, r00, r01, r02, r10, r11, r12, r20, r21, r22)
-            self.Camera:updateOffset(1, self._state.CameraCFrame)
+            _moveCamera(self, Vector2.new(moveDirX * dt * 200, moveDirY * dt * 200))
             debug.profileend("game-wasd-camera")
         end
     )
@@ -493,6 +475,7 @@ local function patchNetworkedBoard(locallyDiscovered, networkDiscovered)
     return locallyDiscovered
 end
 
+-- TODO: handle networking in another file... much like MinesweeperNetworker on server
 function MinesweeperClient:route(packet, ...)
     local args = {...}
     if packet == GameEnum.PacketType.SetFlagState then
