@@ -1,5 +1,10 @@
 local UserInputService = game:GetService("UserInputService")
 local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
+
+local PlayerChatColor = require(shared.Common.PlayerChatColor)
+
+local GameEnum = shared.GameEnum
 
 local UI = {}
 UI.StatusBarMessages = {
