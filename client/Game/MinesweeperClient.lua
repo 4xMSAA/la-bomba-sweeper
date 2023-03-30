@@ -48,6 +48,89 @@ local function playSound(game, folder)
     game.Sounds[sound]:play()
 end
 
+local function _compose(messages, patterns)
+    local message = messages[math.random(#messages)]
+
+    for pattern, value in pairs(patterns or {}) do
+        message = message:gsub("%%" .. pattern .. "%%", tostring(value))
+    end
+    
+    return message
+end
+
+local function _moveCamera(game, input)
+    game._state.CameraCFrame = 
+        game._state.CameraCFrame *
+        CFrame.new(input.X * CAMERA_SENSITIVITY_X, -input.Y * CAMERA_SENSITIVITY_Y, 0)
+    local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = game._state.CameraCFrame:components()
+    local extents = game.BoardLastKnownExtents 
+    local pos = game.BoardLastKnownPosition
+    local boundX = math.min(
+        math.max(
+            pos.X - extents.X / 2, x
+        ),
+        pos.X + extents.X / 2
+    )
+    local boundY = math.min(
+        math.max(
+            pos.Z - extents.Z / 2, y
+        ),
+        pos.Z + extents.Z / 2
+    )
+
+    game._state.CameraCFrame = CFrame.new(boundX, boundY, z, r00, r01, r02, r10, r11, r12, r20, r21, r22)
+    game.Camera:updateOffset(1, game._state.CameraCFrame)
+end
+
+local function _explodeBoard(game, sound)
+    if sound.Parent ~= shared.Assets.Sounds.Explode then return end
+    game.Board._render.explode = true
+    game.Board:render()
+end
+
+local function _playSharedSound(game, instance, position)
+    local sound = Sound.fromInstance(instance, {Parent = _G.Path.Sounds})
+    local childSound = sound.Instance:FindFirstChildOfClass("Sound")
+    if childSound and childSound:GetAttribute("PlayInstantly") then
+        childSound:Play()
+        _explodeBoard(game, instance)
+    elseif childSound and childSound:GetAttribute("Delay") then
+        coroutine.wrap(function()
+            task.wait(childSound:GetAttribute("Delay"))
+            childSound:Play()
+            _explodeBoard(game, instance)
+        end)()
+    elseif not childSound then
+        _explodeBoard(game, instance)
+    end
+
+    sound.Ended:Connect(function()
+        if childSound and not childSound:GetAttribute("PlayInstantly") and not childSound:GetAttribute("Delay") then
+            _explodeBoard(game, instance)
+            childSound:Play()
+            childSound.Ended:wait()
+        end
+        task.wait(childSound and childSound.TimeLength or 1)
+        sound:destroy()
+    end)
+    
+    if position then
+        -- do some magic later on
+    end
+
+    sound:play()
+end
+
+local function patchNetworkedBoard(locallyDiscovered, networkDiscovered)
+    for x, row in pairs(networkDiscovered) do
+        for y, tile in pairs(row) do
+            locallyDiscovered[x][y] = tile > BOARD_UNDISCOVERED and tile or locallyDiscovered[x][y]
+        end
+    end
+
+    return locallyDiscovered
+end
+
 local function placeFlag(game, state)
     if game.GameState == GameEnum.GameState.InProgress then
         local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
@@ -101,6 +184,8 @@ function MinesweeperClient.new(client, options)
         Board = nil,
         Victory = false,
         CursorManager = CursorManager.new(self),
+        
+        GameState = GameEnum.GameState.Unknown,
         
         Displays = {
             Timer = SevenSegment.new(30, _G.Path.FX),
@@ -206,21 +291,12 @@ function MinesweeperClient:gameBegin(gameInfo)
     firstGame = false
 end
 
-local function _compose(messages, patterns)
-    local message = messages[math.random(#messages)]
-
-    for pattern, value in pairs(patterns or {}) do
-        message = message:gsub("%%" .. pattern .. "%%", tostring(value))
-    end
-    
-    return message
-end
-
 function MinesweeperClient:gameEnd(victory, extraData)
-    self.GameState = GameEnum.GameState.CleanUp
+    local board = self.Board
 
-    self.Board.Discovered = extraData.Discovered or self.Board.Discovered
-    self.Board.Mines = extraData.Mines or {}
+    self.GameState = GameEnum.GameState.CleanUp
+    board.Discovered = extraData.Discovered or self.Board.Discovered
+    board.Mines = extraData.Mines or {}
 
     if victory == true then
         self.Victory = true
@@ -229,7 +305,7 @@ function MinesweeperClient:gameEnd(victory, extraData)
             VICTORY_MESSAGE_COLOR
         )
     elseif victory == false then
-        self.Board.ExplosionAt = extraData.ExplosionAt
+        board.ExplosionAt = extraData.ExplosionAt
         self.UI.createMessage(
             _compose(FAIL_MESSAGES, {name = extraData.Who.DisplayName}), 
             FAIL_MESSAGE_COLOR
@@ -238,10 +314,10 @@ function MinesweeperClient:gameEnd(victory, extraData)
         self.UI.createMessage("Something weird happened... Restarting.", Color3.new(0.5, 0.5, 0.5))
     end
 
-    self.Board:render()
+    board:render()
 
-    local board = self.Board
     task.wait(5)
+
     if self.GameState == GameEnum.GameState.CleanUp then
         self.GameState = GameEnum.GameState.GameOver
         board:destroy()
@@ -249,30 +325,7 @@ function MinesweeperClient:gameEnd(victory, extraData)
     
 end
 
-local function _moveCamera(game, input)
-    game._state.CameraCFrame = 
-        game._state.CameraCFrame *
-        CFrame.new(input.X * CAMERA_SENSITIVITY_X, -input.Y * CAMERA_SENSITIVITY_Y, 0)
-    local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = game._state.CameraCFrame:components()
-    local extents = game.BoardLastKnownExtents 
-    local pos = game.BoardLastKnownPosition
-    local boundX = math.min(
-        math.max(
-            pos.X - extents.X / 2, x
-        ),
-        pos.X + extents.X / 2
-    )
-    local boundY = math.min(
-        math.max(
-            pos.Z - extents.Z / 2, y
-        ),
-        pos.Z + extents.Z / 2
-    )
-
-    game._state.CameraCFrame = CFrame.new(boundX, boundY, z, r00, r01, r02, r10, r11, r12, r20, r21, r22)
-    game.Camera:updateOffset(1, game._state.CameraCFrame)
-end
-
+-- TODO: evil... find a better way... more customizable way as well?
 function MinesweeperClient:bindInput()
     ContextActionService:UnbindAllActions()
 
@@ -288,7 +341,7 @@ function MinesweeperClient:bindInput()
             if self.GameState == GameEnum.GameState.InProgress and self:isPlaying() then
                 if name == "PlaceFlag" then
                     flaggingState = placeFlag(self)
-                    UI.updateMouseHover(self)
+                    self.UI.updateMouseHover(self)
                 elseif name == "Discover" then
                     sweeping = true
                     sweep(self)
@@ -312,19 +365,14 @@ function MinesweeperClient:bindInput()
             UserInputService.MouseBehavior = 
                 boolState and Enum.MouseBehavior.LockCurrentPosition 
                 or Enum.MouseBehavior.Default
-        end
-        
-        if name == "CameraUp" then
-            moveDirY = boolState and 1 or 0
-        end
-        if name == "CameraDown" then
-            moveDirY = boolState and -1 or 0
-        end
-        if name == "CameraRight" then
-            moveDirX = boolState and 1 or 0
-        end
-        if name == "CameraLeft" then
-            moveDirX = boolState and -1 or 0
+        elseif name == "CameraUp" then
+            moveDirY = boolState and 1 or moveDirY < 0 and -1 or 0
+        elseif name == "CameraDown" then
+            moveDirY = boolState and -1 or moveDirY > 0 and 1 or 0
+        elseif name == "CameraRight" then
+            moveDirX = boolState and 1 or moveDirX < 0 and -1 or 0
+        elseif name == "CameraLeft" then
+            moveDirX = boolState and -1 or moveDirX > 0 and 1 or 0
         end
     end
     
@@ -339,7 +387,7 @@ function MinesweeperClient:bindInput()
             if sweeping then
                 sweep(self)
             end
-            UI.updateMouseHover(self)
+            self.UI.updateMouseHover()
         elseif input.UserInputType == Enum.UserInputType.MouseWheel then
                 if input.Position.Z > 0 then
                     self._state.Scrolls = math.min(ZOOM_MAX_SCROLL, self._state.Scrolls + 1)
@@ -354,6 +402,7 @@ function MinesweeperClient:bindInput()
         "CameraWASDControls", 
         99,
         function(dt)
+            debug.profilebegin("game-wasd-camera")
             dt = math.min(1, dt)
             if self.Client.Paused then return end
             if not self.Board or not self.Board.getExtents then return end
@@ -424,55 +473,6 @@ function MinesweeperClient:bind()
             end
         end
     )
-end
-
-local function _explodeBoard(game, sound)
-    if sound.Parent ~= shared.Assets.Sounds.Explode then return end
-    game.Board._render.explode = true
-    game.Board:render()
-end
-
-local function _playSharedSound(game, instance, position)
-    local sound = Sound.fromInstance(instance, {Parent = _G.Path.Sounds})
-    local childSound = sound.Instance:FindFirstChildOfClass("Sound")
-    if childSound and childSound:GetAttribute("PlayInstantly") then
-        childSound:Play()
-        _explodeBoard(game, instance)
-    elseif childSound and childSound:GetAttribute("Delay") then
-        coroutine.wrap(function()
-            task.wait(childSound:GetAttribute("Delay"))
-            childSound:Play()
-            _explodeBoard(game, instance)
-        end)()
-    elseif not childSound then
-        _explodeBoard(game, instance)
-    end
-
-    sound.Ended:Connect(function()
-        if childSound and not childSound:GetAttribute("PlayInstantly") and not childSound:GetAttribute("Delay") then
-            _explodeBoard(game, instance)
-            childSound:Play()
-            childSound.Ended:wait()
-        end
-        task.wait(childSound and childSound.TimeLength or 1)
-        sound:destroy()
-    end)
-    
-    if position then
-        -- do some magic later on
-    end
-
-    sound:play()
-end
-
-local function patchNetworkedBoard(locallyDiscovered, networkDiscovered)
-    for x, row in pairs(networkDiscovered) do
-        for y, tile in pairs(row) do
-            locallyDiscovered[x][y] = tile > BOARD_UNDISCOVERED and tile or locallyDiscovered[x][y]
-        end
-    end
-
-    return locallyDiscovered
 end
 
 -- TODO: handle networking in another file... much like MinesweeperNetworker on server
