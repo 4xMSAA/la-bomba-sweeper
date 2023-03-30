@@ -1,3 +1,4 @@
+local UserInputService = game:GetService("UserInputService")
 local Debris = game:GetService("Debris")
 
 local UI = {}
@@ -8,6 +9,31 @@ UI.StatusBarMessages = {
 --TODO: port over UI code from minesweeper client
 function UI.statusBar(text, color)
     
+end
+
+function UI.updateMouseHover()
+    local infoBox = UI.Instance.InfoBox
+    local flagInfo = infoBox.FlagInfo
+    local game = UI.Game
+    local mouseLocation = UserInputService:GetMouseLocation()
+
+    infoBox.Position = UDim2.new(0, mouseLocation.X, 0, mouseLocation.Y)
+
+    if game.GameState == GameEnum.GameState.InProgress or game.GameState == GameEnum.GameState.CleanUp and game.Board then
+        local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
+
+        -- flag info
+        if tile and game.Board:isFlagged(tile.X, tile.Y) then
+            local flag = game.Board:getFlag(tile.X, tile.Y)
+            flagInfo.DisplayName.Text = flag.Owner.DisplayName
+            flagInfo.DisplayName.TextColor3 = PlayerChatColor(flag.Owner.Name)
+            flagInfo.Visible = flag.Owner == Players.LocalPlayer and false or true
+        else
+            flagInfo.Visible = false
+        end 
+    else
+        flagInfo.Visible = false
+    end
 end
 
 function UI.createMessage(text, color, duration)

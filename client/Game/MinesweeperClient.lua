@@ -86,29 +86,6 @@ local function sweep(game)
     end
 end
 
-local function updateMouseHover(game)
-    local infoBox = game.Gui.InfoBox
-    local flagInfo = infoBox.FlagInfo
-    local mouseLocation = UserInputService:GetMouseLocation()
-
-    infoBox.Position = UDim2.new(0, mouseLocation.X, 0, mouseLocation.Y)
-
-    if game.GameState == GameEnum.GameState.InProgress or game.GameState == GameEnum.GameState.CleanUp and game.Board then
-        local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
-
-        -- flag info
-        if tile and game.Board:isFlagged(tile.X, tile.Y) then
-            local flag = game.Board:getFlag(tile.X, tile.Y)
-            flagInfo.DisplayName.Text = flag.Owner.DisplayName
-            flagInfo.DisplayName.TextColor3 = PlayerChatColor(flag.Owner.Name)
-            flagInfo.Visible = flag.Owner == Players.LocalPlayer and false or true
-        else
-            flagInfo.Visible = false
-        end 
-    else
-        flagInfo.Visible = false
-    end
-end
 
 ---A class description
 ---@class MinesweeperClient
@@ -131,7 +108,8 @@ function MinesweeperClient.new(client, options)
         },
         
         Panels = {
-            Board = Panel.new()
+            Board = Panel.new(),
+            Options = Panel.new()
         },
 
         Gui = shared.Assets.Gui.Game:Clone(),
@@ -154,6 +132,7 @@ function MinesweeperClient.new(client, options)
 
     self.Gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
     self.UI = require(_G.Client.Game.UI)(self)
+
 
     self.CursorManager = CursorManager.new(self)
     self.CursorManager:listen()
@@ -285,7 +264,7 @@ function MinesweeperClient:bindInput()
             if self.GameState == GameEnum.GameState.InProgress and self:isPlaying() then
                 if name == "PlaceFlag" then
                     flaggingState = placeFlag(self)
-                    updateMouseHover(self)
+                    UI.updateMouseHover(self)
                 elseif name == "Discover" then
                     sweeping = true
                     sweep(self)
@@ -356,7 +335,7 @@ function MinesweeperClient:bindInput()
             if sweeping then
                 sweep(self)
             end
-            updateMouseHover(self)
+            UI.updateMouseHover(self)
         elseif input.UserInputType == Enum.UserInputType.MouseWheel then
                 if input.Position.Z > 0 then
                     self._state.Scrolls = math.min(ZOOM_MAX_SCROLL, self._state.Scrolls + 1)
