@@ -24,7 +24,6 @@ local Timer = require(shared.Common.Timer)
 local NetworkLib = require(shared.Common.NetworkLib)
 local Sound = require(shared.Common.Sound)
 local TableUtils = require(shared.Common.TableUtils)
-local PlayerChatColor = require(shared.Common.PlayerChatColor)
 
 local log, logwarn = require(shared.Common.Log)(script:GetFullName())
 
@@ -365,9 +364,9 @@ function MinesweeperClient:bindInput()
             UserInputService.MouseBehavior = 
                 boolState and Enum.MouseBehavior.LockCurrentPosition 
                 or Enum.MouseBehavior.Default
-        elseif name == "CameraUp" then
-            moveDirY = boolState and 1 or moveDirY < 0 and -1 or 0
         elseif name == "CameraDown" then
+            moveDirY = boolState and 1 or moveDirY < 0 and -1 or 0
+        elseif name == "CameraUp" then
             moveDirY = boolState and -1 or moveDirY > 0 and 1 or 0
         elseif name == "CameraRight" then
             moveDirX = boolState and 1 or moveDirX < 0 and -1 or 0
@@ -475,10 +474,15 @@ function MinesweeperClient:bind()
     )
 end
 
+
 -- TODO: handle networking in another file... much like MinesweeperNetworker on server
 function MinesweeperClient:route(packet, ...)
     local args = {...}
     if packet == GameEnum.PacketType.SetFlagState then
+        local attempts = 1
+        while self.Board ~= nil and attempts < 10 do task.wait(0.5) attempts = attempts + 1 end
+        assert(self.Board ~= nil, "board is missing, nowhere to set flag state on")
+
         local x, y, state, owner = args[1], args[2], args[3], args[4]
 
         self.Board:setFlag(x, y, state, owner)
