@@ -89,6 +89,7 @@ end
 
 local function _playSharedSound(game, instance, position)
     local sound = Sound.fromInstance(instance, {Parent = _G.Path.Sounds})
+    local childGui = sound.Instance:FindFirstChildOfClass("ScreenGui")
     local childSound = sound.Instance:FindFirstChildOfClass("Sound")
     if childSound and childSound:GetAttribute("PlayInstantly") then
         childSound:Play()
@@ -101,6 +102,10 @@ local function _playSharedSound(game, instance, position)
         end)()
     elseif not childSound then
         _explodeBoard(game, instance)
+    end
+    
+    if childGui then
+        childGui:Clone().Parent = game.Gui.Parent
     end
 
     sound.Ended:Connect(function()
@@ -212,7 +217,6 @@ function MinesweeperClient.new(client, options)
     self.Displays.Flags.AnchorPoint = Vector2.new(1, 0)
     
     self.Panels.Board.AnchorPoint = Vector2.new(0.5, 0)
-    self.Panels.Options.AnchorPoint = Vector2.new(0, 1)
 
     self.Gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
     self.UI = require(_G.Client.Game.UI)(self)
