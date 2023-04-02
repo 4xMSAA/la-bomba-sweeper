@@ -193,7 +193,6 @@ function MinesweeperClient.new(client, options)
         
         Panels = {
             Board = Panel.new(),
-            Options = Panel.new()
         },
 
         Gui = shared.Assets.Gui.Game:Clone(),
@@ -280,11 +279,8 @@ function MinesweeperClient:gameBegin(gameInfo)
     
     self.Panels.Board:setSizeWithBorder(Vector2.new(extents.X, extents.Z + displaySizeY + 1))
     self.Panels.Board:setCFrame(position * CFrame.new(0, 0, extents.Z / 2 + self.Panels.Board:getBorderSize()) * CFrame.new(0, -1, 0))
-    self.Panels.Options:setSizeWithBorder(Vector2.new(40, extents.Z + displaySizeY + 1))
-    self.Panels.Options:setCFrame(position * CFrame.new(extents.X, 0, extents.Z / 2 + self.Panels.Board:getBorderSize()) * CFrame.new(0, -1, 0))
 
     self.Panels.Board.Instance.Parent = _G.Path.FX
-    self.Panels.Options.Instance.Parent = _G.Path.FX
 
     self.Displays.Flags:update(self.Board.MineCount - TableUtils.getSize(self.Board.Flags))
     
