@@ -213,6 +213,7 @@ function MinesweeperClient.new(client, options)
     self.Displays.Flags.AnchorPoint = Vector2.new(1, 0)
     
     self.Panels.Board.AnchorPoint = Vector2.new(0.5, 0)
+    self.Panels.Options.AnchorPoint = Vector2.new(0, 1)
 
     self.Gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
     self.UI = require(_G.Client.Game.UI)(self)
@@ -252,13 +253,13 @@ function MinesweeperClient:gameBegin(gameInfo)
     end
 
     self.GameState = GameEnum.GameState.InProgress
-    self._state.CameraHeight = 100 -- TODO: calculate
+    self._state.CameraHeight = 105 -- TODO: calculate
 
     self.Board:render()
     self.Victory = false
     
     if firstGame then
-        self._state.CameraCFrame = CFrame.new()
+        self._state.CameraCFrame = CFrame.new(0, 1.8, 0)
         self._state.Scrolls = 0
         self.Camera:updateOffset(1, self._state.CameraCFrame)
         self.Camera:updateOffset(2, CFrame.new())
@@ -279,8 +280,11 @@ function MinesweeperClient:gameBegin(gameInfo)
     
     self.Panels.Board:setSizeWithBorder(Vector2.new(extents.X, extents.Z + displaySizeY + 1))
     self.Panels.Board:setCFrame(position * CFrame.new(0, 0, extents.Z / 2 + self.Panels.Board:getBorderSize()) * CFrame.new(0, -1, 0))
+    self.Panels.Options:setSizeWithBorder(Vector2.new(40, extents.Z + displaySizeY + 1))
+    self.Panels.Options:setCFrame(position * CFrame.new(extents.X, 0, extents.Z / 2 + self.Panels.Board:getBorderSize()) * CFrame.new(0, -1, 0))
 
     self.Panels.Board.Instance.Parent = _G.Path.FX
+    self.Panels.Options.Instance.Parent = _G.Path.FX
 
     self.Displays.Flags:update(self.Board.MineCount - TableUtils.getSize(self.Board.Flags))
     
@@ -480,7 +484,7 @@ function MinesweeperClient:route(packet, ...)
     local args = {...}
     if packet == GameEnum.PacketType.SetFlagState then
         local attempts = 1
-        while self.Board ~= nil and attempts < 10 do task.wait(0.5) attempts = attempts + 1 end
+        while self.Board == nil and attempts < 10 do task.wait(0.5) attempts = attempts + 1 end
         assert(self.Board ~= nil, "board is missing, nowhere to set flag state on")
 
         local x, y, state, owner = args[1], args[2], args[3], args[4]
