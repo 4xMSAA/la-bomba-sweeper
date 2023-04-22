@@ -72,6 +72,10 @@ function CursorManager:sendWorldCursor()
     end
 end
 
+function CursorManager:sendSelectCursor()
+    local board = game.Board
+end
+
 function CursorManager:listen()
     NetworkLib:listenFor(GameEnum.PacketType.CursorUpdate, function(status, ...)
         local args = {...}

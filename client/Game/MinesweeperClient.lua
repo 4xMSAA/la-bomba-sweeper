@@ -161,6 +161,11 @@ local function placeFlag(game, state)
     end
 end
 
+local function moveSelection(game, direction)
+
+end
+    
+
 local function sweep(game)
     if game.GameState == GameEnum.GameState.InProgress then
         local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
@@ -188,6 +193,7 @@ function MinesweeperClient.new(client, options)
         Board = nil,
         Victory = false,
         CursorManager = CursorManager.new(self),
+        UsingMovementKeys = false,
         
         GameState = GameEnum.GameState.Unknown,
         
@@ -377,6 +383,21 @@ function MinesweeperClient:bindInput()
         elseif name == "CameraLeft" then
             moveDirX = boolState and -1 or moveDirX > 0 and 1 or 0
         end
+        
+        if name:match("^Select") then
+            local add = {
+                Up = Vector2.new(0, -1),
+                Down = Vector2.new(0, 1),
+                Left = Vector2.new(-1, 0),
+                Right = Vector2.new(1, 0)
+            }
+            
+            for key, value in pairs(add) do
+                if name:match(key .. "$") then
+                    moveSelection(value)
+                end
+            end
+        end
     end
     
     local function inputChangedHandler(input)
@@ -425,6 +446,10 @@ function MinesweeperClient:bindInput()
     ContextActionService:BindAction("CameraDown", inputHandler, true, Enum.KeyCode.S)
     ContextActionService:BindAction("CameraLeft", inputHandler, true, Enum.KeyCode.A)
     ContextActionService:BindAction("CameraRight", inputHandler, true, Enum.KeyCode.D)
+    ContextActionService:BindAction("SelectUp", inputHandler, true, Enum.KeyCode.Up, Enum.KeyCode.K)
+    ContextActionService:BindAction("SelectDown", inputHandler, true, Enum.KeyCode.Down, Enum.KeyCode.J)
+    ContextActionService:BindAction("SelectLeft", inputHandler, true, Enum.KeyCode.Left, Enum.KeyCode.H)
+    ContextActionService:BindAction("SelectRight", inputHandler, true, Enum.KeyCode.Right, Enum.KeyCode.L)
 end
 
 function MinesweeperClient:bind()
@@ -442,6 +467,7 @@ function MinesweeperClient:bind()
             
             local cursorInfo = self.Gui.InfoBox.CursorInfo
             cursorInfo.Visible = false
+
             local nearestCursor = self.CursorManager:getNearestCursor()
             if nearestCursor then
                 cursorInfo.Visible = true

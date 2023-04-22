@@ -2,6 +2,7 @@ local DEFAULT_RENDER_OPTIONS = _G.BOARD.RENDER
 local DEFAULT_GENERATE_OPTIONS = _G.BOARD.GENERATION
 local FLAG_OTHER_COOLDOWN = _G.FLAGGING.FLAG_PLACED_OTHER_COOLDOWN
 local FLAG_DEFAULT_COLOR = DEFAULT_RENDER_OPTIONS.FLAG_COLOR
+local SELECTION_HIGHLIGHT_COLOR = DEFAULT_RENDER_OPTIONS.SELECTION_HIGHLIGHT_COLOR
 
 local BOARD_UNDISCOVERED = -1
 local BOARD_PENDING = -2
@@ -375,7 +376,7 @@ function Board:getPosition()
     return self._render.position
 end
 
-function Board:render(renderOptions)
+function Board:render(renderOptions, selectionCursors)
     assert(_G.Client, "only client can render the board")
 
     renderOptions = renderOptions or self.RenderOptions
@@ -416,6 +417,13 @@ function Board:render(renderOptions)
             end
             
         end
+    end
+    
+    for owner, cursor in pairs(selectionCursors or {}) do
+        cursor.HighlightInstance.Transparency = owner.ID == Players.LocalPlayer.UserId and 0 or 0.5
+        local x, y = cursor.BoardSelectionPosition.X, cursor.BoardSelectionPosition.Y
+        cursor.Color3 = owner.ID == Players.LocalPlayer.ID and SELECTION_HIGHLIGHT_COLOR PlayerChatColor(owner.Name)
+        cursor.HighlightInstance.Adornee = self._render.parts[x][y]
     end
     
     -- clear any flags placed if they are discovered

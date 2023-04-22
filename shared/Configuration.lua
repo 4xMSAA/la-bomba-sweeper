@@ -35,11 +35,19 @@ return {
         }
     },
     
+    CONTROLS = {
+        KEYBOARD = {
+            REPEAT_RATE = 100,
+            REPEAT_DELAY = 300
+        }
+    },
+    
     BOARD = {
         RENDER = {
             Pivot = Vector3.new(0, 0, 0),
 
             Size = Vector3.new(2, 1, 2),
+
 
             PartColor = {
                 Primary = Color3.fromRGB(77, 153, 0),
@@ -60,7 +68,8 @@ return {
                 [8] = Color3.fromRGB(255, 170, 0),
             },
 
-            FLAG_COLOR = Color3.fromRGB(196, 40, 28)
+            FLAG_COLOR = Color3.fromRGB(196, 40, 28),
+            SELECTION_HIGHLIGHT_COLOR = Color3.fromRGB(20, 20, 255)
         },
         GENERATION = {
             Size = Vector2.new(25, 25),
