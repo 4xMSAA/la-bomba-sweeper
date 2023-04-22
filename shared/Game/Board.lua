@@ -440,13 +440,13 @@ function Board:render(renderOptions)
     end
 end
 
-function Board:renderCursors(selectionCursors)
-    assert(_G.Client, "only client can render the board")
+function Board:renderCursors(cursors)
+    assert(_G.Client, "only client need to set cursors for the board")
     
-    for owner, cursor in pairs(selectionCursors or {}) do
-        cursor.HighlightInstance.Transparency = owner.ID == Players.LocalPlayer.UserId and 0 or 0.5
+    for ownerID, cursor in pairs(cursors) do
+        cursor.HighlightInstance.Transparency = ownerID == Players.LocalPlayer.UserId and 0 or 0.5
         local x, y = cursor.BoardSelectionPosition.X, cursor.BoardSelectionPosition.Y
-        cursor.Color3 = owner.ID == Players.LocalPlayer.UserId and SELECTION_HIGHLIGHT_COLOR or PlayerChatColor(owner.Name)
+        cursor.Color3 = ownerID == Players.LocalPlayer.UserId and SELECTION_HIGHLIGHT_COLOR or PlayerChatColor(owner.Name)
         cursor.HighlightInstance.Adornee = self._render.parts[x][y].Instance
     end
 end

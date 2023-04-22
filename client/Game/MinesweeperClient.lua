@@ -164,11 +164,11 @@ end
 
 local function moveSelection(game, direction)
     local self = game
-    self.UsingMovementKeys = true
+    Cursor.LocalCursor.Visible = true
 
     Cursor.LocalCursor:move(self.Board, direction)
     self.Board:render()
-    self.Board:renderCursors(self.CursorManager:getSelectionCursors())
+    self.Board:renderCursors(self.CursorManager.Cursors)
 end
     
 
@@ -199,7 +199,6 @@ function MinesweeperClient.new(client, options)
         Board = nil,
         Victory = false,
         CursorManager = CursorManager.new(self),
-        UsingMovementKeys = false,
         
         GameState = GameEnum.GameState.Unknown,
         
@@ -276,7 +275,7 @@ function MinesweeperClient:gameBegin(gameInfo)
     
     local halfSize = self.Board.Options.Size / 2
     Cursor.LocalCursor:set(Vector2.new(math.ceil(halfSize.X), math.ceil(halfSize.Y)))
-    self.Board:renderCursors(self.CursorManager:getSelectionCursors())
+    self.Board:renderCursors(self.CursorManager.Cursors)
 
     if firstGame then
         self._state.CameraCFrame = CFrame.new(0, 1.8, 0)
@@ -362,9 +361,11 @@ function MinesweeperClient:bindInput()
                 if name == "PlaceFlag" then
                     flaggingState = placeFlag(self)
                     self.UI.updateMouseHover(self)
+                    Cursor.LocalCursor.Visible = false
                 elseif name == "Discover" then
                     sweeping = true
                     sweep(self)
+                    Cursor.LocalCursor.Visible = false
                 end
                 if name:match("^Select") then
                     local add = {

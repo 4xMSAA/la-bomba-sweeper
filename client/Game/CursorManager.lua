@@ -32,6 +32,8 @@ function CursorManager.new(game)
     setmetatable(self, CursorManager)
     Maid.watch(self)
 
+    self.Cursors[Players.LocalPlayer.UserId] = Cursor.LocalCursor
+
     return self
 end
 
@@ -44,17 +46,6 @@ function CursorManager:getNearestCursor()
             return cursor
         end
     end
-end
-
-function CursorManager:getSelectionCursors()
-    local cursors = {[Cursor.LocalCursor.Owner] = Cursor.LocalCursor}
-    for _, cursor in pairs(self.Cursors) do
-        if cursor.Visible and cursor.UsingMovementKeys then
-            cursors[cursor.Owner] = cursor
-        end
-    end
-    
-    return cursors
 end
 
 function CursorManager:createNewCursor(owner)
@@ -120,5 +111,6 @@ function CursorManager:update()
         cursor:update()
     end
 end
+
 
 return CursorManager
