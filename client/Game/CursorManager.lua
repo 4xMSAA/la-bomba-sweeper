@@ -46,6 +46,17 @@ function CursorManager:getNearestCursor()
     end
 end
 
+function CursorManager:getSelectionCursors()
+    local cursors = {[Cursor.LocalCursor.Owner] = Cursor.LocalCursor}
+    for _, cursor in pairs(self.Cursors) do
+        if cursor.Visible and cursor.UsingMovementKeys then
+            cursors[cursor.Owner] = cursor
+        end
+    end
+    
+    return cursors
+end
+
 function CursorManager:createNewCursor(owner)
     local cursor = Cursor.new(owner, self.Game.UI.createCursor()) 
     self.Cursors[owner.ID] = cursor
@@ -86,6 +97,8 @@ function CursorManager:listen()
                     self.Cursors[tonumber(ownerID)]:setPosition(cursorPosition)
                 end
             end
+
+            -- self.Game.Board:renderCursors(self:getSelectionCursors())
         elseif status == "add" then
 
             local owner = args[1]
@@ -98,6 +111,7 @@ function CursorManager:listen()
             self:removeCursorByID(tonumber(id))
             log(2, "removing cursor from", id)
         end
+
     end)
 end
 

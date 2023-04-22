@@ -29,6 +29,7 @@ local log, logwarn = require(shared.Common.Log)(script:GetFullName())
 
 local Board = require(shared.Game.Board)
 local CursorManager = require(_G.Client.Game.CursorManager)
+local Cursor = require(_G.Client.Game.Cursor)
 local SevenSegment = require(_G.Client.Render.SevenSegment)
 local Panel = require(_G.Client.Render.Panel)
 
@@ -135,9 +136,9 @@ local function patchNetworkedBoard(locallyDiscovered, networkDiscovered)
     return locallyDiscovered
 end
 
-local function placeFlag(game, state)
+local function placeFlag(game, state, tilePos)
     if game.GameState == GameEnum.GameState.InProgress then
-        local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
+        local tile = tilePos or game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
         if tile and game.Board:getTile(tile.X, tile.Y) == BOARD_UNDISCOVERED then
             local isFlagged, flagState = game.Board:isFlagged(tile.X, tile.Y)
             if state ~= nil then
@@ -162,13 +163,18 @@ local function placeFlag(game, state)
 end
 
 local function moveSelection(game, direction)
+    local self = game
+    self.UsingMovementKeys = true
 
+    Cursor.LocalCursor:move(self.Board, direction)
+    self.Board:render()
+    self.Board:renderCursors(self.CursorManager:getSelectionCursors())
 end
     
 
-local function sweep(game)
+local function sweep(game, tilePos)
     if game.GameState == GameEnum.GameState.InProgress then
-        local tile = game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
+        local tile = tilePos or game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
         if tile and game.Board:getTile(tile.X, tile.Y) == BOARD_UNDISCOVERED and not game.Board:isFlagged(tile.X, tile.Y) then
             playSound(game, shared.Assets.Sounds.Discover)
             game.Board.Discovered[tile.X][tile.Y] = BOARD_PENDING
@@ -264,9 +270,14 @@ function MinesweeperClient:gameBegin(gameInfo)
     self.GameState = GameEnum.GameState.InProgress
     self._state.CameraHeight = 105 -- TODO: calculate
 
+
     self.Board:render()
     self.Victory = false
     
+    local halfSize = self.Board.Options.Size / 2
+    Cursor.LocalCursor:set(Vector2.new(math.ceil(halfSize.X), math.ceil(halfSize.Y)))
+    self.Board:renderCursors(self.CursorManager:getSelectionCursors())
+
     if firstGame then
         self._state.CameraCFrame = CFrame.new(0, 1.8, 0)
         self._state.Scrolls = 0
@@ -355,6 +366,35 @@ function MinesweeperClient:bindInput()
                     sweeping = true
                     sweep(self)
                 end
+                if name:match("^Select") then
+                    local add = {
+                        Up = Vector2.new(0, -1),
+                        Down = Vector2.new(0, 1),
+                        Left = Vector2.new(-1, 0),
+                        Right = Vector2.new(1, 0)
+                    }
+                    
+                    for key, value in pairs(add) do
+                        if name:match(key .. "$") then
+                            moveSelection(self, value)
+                        end
+                    end
+                end
+                if name:match("^NoMouse") then
+                    if name:match("PlaceFlag$") then
+                        placeFlag(self, nil, Cursor.LocalCursor:get())
+                    end
+                    if name:match("Discover") then
+                       sweep(self, Cursor.LocalCursor:get()) 
+                    end
+                    if name:match("PlaceFlagModifier") then
+                        if not UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                            return Enum.ContextActionResult.Pass
+                        end
+
+                        placeFlag(self, nil, Cursor.LocalCursor:get())
+                    end
+                end
             end
             if name == "debugPause" then
                 self.Client.Paused = not self.Client.Paused
@@ -384,20 +424,6 @@ function MinesweeperClient:bindInput()
             moveDirX = boolState and -1 or moveDirX > 0 and 1 or 0
         end
         
-        if name:match("^Select") then
-            local add = {
-                Up = Vector2.new(0, -1),
-                Down = Vector2.new(0, 1),
-                Left = Vector2.new(-1, 0),
-                Right = Vector2.new(1, 0)
-            }
-            
-            for key, value in pairs(add) do
-                if name:match(key .. "$") then
-                    moveSelection(value)
-                end
-            end
-        end
     end
     
     local function inputChangedHandler(input)
@@ -450,6 +476,9 @@ function MinesweeperClient:bindInput()
     ContextActionService:BindAction("SelectDown", inputHandler, true, Enum.KeyCode.Down, Enum.KeyCode.J)
     ContextActionService:BindAction("SelectLeft", inputHandler, true, Enum.KeyCode.Left, Enum.KeyCode.H)
     ContextActionService:BindAction("SelectRight", inputHandler, true, Enum.KeyCode.Right, Enum.KeyCode.L)
+    ContextActionService:BindAction("NoMouseDiscover", inputHandler, true, Enum.KeyCode.Z, Enum.KeyCode.Space)
+    ContextActionService:BindAction("NoMousePlaceFlag", inputHandler, true, Enum.KeyCode.X)
+    ContextActionService:BindAction("NoMousePlaceFlagModifier", inputHandler, true, Enum.KeyCode.Space)
 end
 
 function MinesweeperClient:bind()

@@ -376,7 +376,7 @@ function Board:getPosition()
     return self._render.position
 end
 
-function Board:render(renderOptions, selectionCursors)
+function Board:render(renderOptions)
     assert(_G.Client, "only client can render the board")
 
     renderOptions = renderOptions or self.RenderOptions
@@ -419,12 +419,6 @@ function Board:render(renderOptions, selectionCursors)
         end
     end
     
-    for owner, cursor in pairs(selectionCursors or {}) do
-        cursor.HighlightInstance.Transparency = owner.ID == Players.LocalPlayer.UserId and 0 or 0.5
-        local x, y = cursor.BoardSelectionPosition.X, cursor.BoardSelectionPosition.Y
-        cursor.Color3 = owner.ID == Players.LocalPlayer.ID and SELECTION_HIGHLIGHT_COLOR PlayerChatColor(owner.Name)
-        cursor.HighlightInstance.Adornee = self._render.parts[x][y]
-    end
     
     -- clear any flags placed if they are discovered
     for _, flag in pairs(self.Flags) do
@@ -443,6 +437,17 @@ function Board:render(renderOptions, selectionCursors)
         flagModel.Parent = part.Instance
         colorContents(flagModel, Players.LocalPlayer.Name ~= flag.Owner.Name and PlayerChatColor(flag.Owner.Name) or FLAG_DEFAULT_COLOR)
         flagModel:SetPrimaryPartCFrame(part.CFrame * CFrame.new(0, part.Size.Y/2, 0))
+    end
+end
+
+function Board:renderCursors(selectionCursors)
+    assert(_G.Client, "only client can render the board")
+    
+    for owner, cursor in pairs(selectionCursors or {}) do
+        cursor.HighlightInstance.Transparency = owner.ID == Players.LocalPlayer.UserId and 0 or 0.5
+        local x, y = cursor.BoardSelectionPosition.X, cursor.BoardSelectionPosition.Y
+        cursor.Color3 = owner.ID == Players.LocalPlayer.UserId and SELECTION_HIGHLIGHT_COLOR or PlayerChatColor(owner.Name)
+        cursor.HighlightInstance.Adornee = self._render.parts[x][y].Instance
     end
 end
 

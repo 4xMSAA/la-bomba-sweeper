@@ -3,6 +3,7 @@ local CURSOR_UPDATE_TICK = _G.TIMERS.CURSOR_UPDATE
 local Maid = require(shared.Common.Maid)
 local PlayerChatColor = require(shared.Common.PlayerChatColor)
 
+local Players = game:GetService("Players")
 local Camera = workspace.CurrentCamera
 
 ---a cursor
@@ -10,16 +11,35 @@ local Camera = workspace.CurrentCamera
 local Cursor = {}
 Cursor.__index = Cursor
 
-function Cursor.newLocal(owner)
-   local self = {
+function Cursor.newLocal()
+   local self = Cursor
+   self.LocalCursor = {
+      Owner = {Player = Players.LocalPlayer, ID = Players.LocalPlayer.UserId, Name = Players.LocalPlayer.Name},
       Local = true,
       HighlightInstance = Instance.new("SelectionBox", _G.Path.FX),
-      BoardSelectionPosition = Vector2.new(),
+      BoardSelectionPosition = Vector2.new(1, 1),
       Visible = false
    }
+   
+   function self.LocalCursor:move(board, direction)
+      local newX = math.max(1, math.min(math.ceil(self.BoardSelectionPosition.X + direction.X), board.Options.Size.X))
+      local newY = math.max(1, math.min(math.ceil(self.BoardSelectionPosition.Y + direction.Y), board.Options.Size.Y))
+      
+      self.BoardSelectionPosition = Vector2.new(newX, newY)
+   end
+   
+   function self.LocalCursor:get()
+      return self.BoardSelectionPosition
+   end
+   
+   function self.LocalCursor:set(xy)
+      self.BoardSelectionPosition = xy
+   end
 
-   return self
+   return self.LocalCursor
 end
+
+Cursor.newLocal()
 
 function Cursor.new(owner, GuiInstance)
    local self = {
