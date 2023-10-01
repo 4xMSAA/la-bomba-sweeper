@@ -42,7 +42,7 @@ function CursorManager:getNearestCursor()
     local mouseLoc = UIS:GetMouseLocation()
     
     for _, cursor in pairs(self.Cursors) do
-        if cursor.Visible and (cursor.Position - mouseLoc).magnitude < CURSOR_THRESHOLD_PX then
+        if not cursor.Local and cursor.Visible and (cursor.Position - mouseLoc).magnitude < CURSOR_THRESHOLD_PX then
             return cursor
         end
     end
@@ -84,7 +84,7 @@ function CursorManager:listen()
         if status == "update" then
             local cursors = args[1]
             for ownerID, cursorPosition in pairs(cursors) do
-                if self.Cursors[tonumber(ownerID)] then
+                if self.Cursors[tonumber(ownerID)] and not self.Cursors[tonumber(ownerID)].Local then
                     self.Cursors[tonumber(ownerID)]:setPosition(cursorPosition)
                 end
             end

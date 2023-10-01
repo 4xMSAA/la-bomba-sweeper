@@ -36,6 +36,10 @@ function Cursor.newLocal()
       self.BoardSelectionPosition = xy
    end
    
+   function self.LocalCursor:setPosition()
+      -- do nothing
+   end
+   
    function self.LocalCursor:update()
       self.HighlightInstance.Visible = self.Visible
    end

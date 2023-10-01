@@ -14,8 +14,8 @@ local PlayerChatColor = require(shared.Common.PlayerChatColor)
 local GameEnum = shared.GameEnum
 local log, logwarn = require(shared.Common.Log)(script:GetFullName())
 
-local function makeTile(x, y)
-    return {X = x, Y = y}
+local function makeTile(x, y, meta)
+    return {X = x, Y = y, meta = meta}
 end
 
 local function makeFlag(owner, x, y)
@@ -50,10 +50,10 @@ function Board.new(options, renderOptions)
         Mines = {},
         MineCount = 0,
         StartedAt = os.time(os.date("!*t")),
-        
+
         _render = {}
     }
-    
+
     for x = 1, self.Options.Size.X do
         self.Discovered[x] = {}
         for y = 1, self.Options.Size.Y do
@@ -73,7 +73,7 @@ function Board:generate(options)
 
     local totalTiles = (options.Size.X*options.Size.Y)
     local capacity = (totalTiles * (options.MinePercentage / 100))
-    
+
     self.MineCount = capacity
 
     local available = {}
@@ -106,20 +106,18 @@ end
 
 function Board:getRenderTile(x, y)
     assert(_G.Client, "only client can get the rendered part")
-    
+
     return self._render.parts[x][y]
 end
 
 function Board:getNearbyTiles(x, y)
-    assert(_G.Server, "only server can get nearby tiles")
-
     local tiles = {}
     for xOffset = -1, 1 do
         for yOffset = -1, 1 do
             if not (xOffset == 0 and yOffset == 0) then
                 local response = self:getTile(x + xOffset, y + yOffset)
                 if response then
-                    table.insert(tiles, makeTile(x + xOffset, y + yOffset))
+                    table.insert(tiles, makeTile(x + xOffset, y + yOffset, response))
                 end
             end
         end
@@ -150,13 +148,13 @@ function Board:mouseToBoard(pos)
 
     local offsetX = self.RenderOptions.Size.X * (self.Options.Size.X / 2) + self.RenderOptions.Size.X
     local offsetY = self.RenderOptions.Size.Z * (self.Options.Size.Y / 2) + self.RenderOptions.Size.X
-    
+
     local transformedX = math.floor((x + offsetX) / (self.RenderOptions.Size.X))
     local transformedY = math.floor((y + offsetY) / (self.RenderOptions.Size.Z))
 
-    return 
-        transformedX > 0 and transformedY > 0 
-        and transformedX <= self.Options.Size.X and transformedY <= self.Options.Size.Y 
+    return
+        transformedX > 0 and transformedY > 0
+        and transformedX <= self.Options.Size.X and transformedY <= self.Options.Size.Y
         and {X = transformedX, Y = transformedY}
         or nil
 end
@@ -221,13 +219,13 @@ function Board:discover(startX, startY)
                 if nearbyMines == 0 then
                     for _, nearbyTile in pairs(self:getNearbyTiles(x, y)) do
                         if self:getTile(nearbyTile.X, nearbyTile.Y) == BOARD_UNDISCOVERED then
-                            table.insert(exploreTiles, nearbyTile) 
+                            table.insert(exploreTiles, nearbyTile)
                         end
                     end
                 end
             end
         end
-        
+
         for _, flag in pairs(self.Flags) do
             local x, y = flag.X, flag.Y
             if self:getTile(x, y) ~= BOARD_UNDISCOVERED and self:getTile(x, y) ~= "Mine" then
@@ -246,11 +244,11 @@ function Board:zeroStart()
 
     local radius = self.Options.RandomStartRadius
     local centerX, centerY = math.floor(self.Options.Size.X/2), math.floor(self.Options.Size.Y/2)
-    
+
     if self.Options.Size.X < radius*2 or self.Options.Size.Y < radius*2 then
         radius = 0
     end
-    
+
     local startX, startY = centerX + math.random(-radius, radius), centerY + math.random(-radius, radius)
     local isMine = self:getTile(startX, startY) == "Mine"
 
@@ -259,7 +257,7 @@ function Board:zeroStart()
     if startTile > 0 then
         local exploreTiles = {makeTile(startX, startY)}
         local exploredTiles = {}
-        
+
         while #exploreTiles > 0 do
             local tile = exploreTiles[1]
             local x, y = tile.X, tile.Y
@@ -285,8 +283,8 @@ function Board:zeroStart()
     else
         self:discover(startX, startY)
     end
-            
-    
+
+
 end
 
 function Board:isVictory()
@@ -299,7 +297,7 @@ function Board:isVictory()
             end
         end
     end
-    
+
     return true
 end
 
@@ -327,7 +325,7 @@ function Board:renderCreate(renderOptions)
     self._render.parts = {}
     self._render.flags = {}
     self._render.model = Instance.new("Model")
-    
+
 
     renderOptions = renderOptions or self.RenderOptions
     local genOptions = self.Options
@@ -345,7 +343,7 @@ function Board:renderCreate(renderOptions)
             p.Size = renderOptions.Size
             p.CFrame = CFoffset * CFrame.new(x * renderOptions.Size.X, 0, y * renderOptions.Size.Z) * CFrame.Angles(0, -math.pi/2, 0)
             p.Parent = self._render.model
-            
+
 
             self._render.parts[x + 1][y + 1] = {
                 Color = p.Color,
@@ -396,11 +394,11 @@ function Board:render(renderOptions)
             part.Label.Text = number > 0 and number or ""
             part.Label.TextColor3 = number > 0 and renderOptions.TextColor[number] or Color3.new()
             part.Instance.CFrame = part.CFrame * CFrame.Angles(number == -2 and math.pi or 0, 0, 0)
-            part.Instance.Color = 
+            part.Instance.Color =
                 (self.ExplosionAt and self.ExplosionAt.X == x and self.ExplosionAt.Y == y) and renderOptions.PartColor.MineClicked or
                 isMine and renderOptions.PartColor.Mine or
-                number > 0 and renderOptions.PartColor.DiscoveredNearby or 
-                number == 0 and renderOptions.PartColor.DiscoveredZero or 
+                number > 0 and renderOptions.PartColor.DiscoveredNearby or
+                number == 0 and renderOptions.PartColor.DiscoveredZero or
                 useSecondary % 2 == 0 and renderOptions.PartColor.Primary or renderOptions.PartColor.Secondary
 
             if isMine and not part.HasExploded and self._render.explode then
@@ -415,11 +413,11 @@ function Board:render(renderOptions)
                     p:Emit(p:GetAttribute("Emit") or 1)
                 end
             end
-            
+
         end
     end
-    
-    
+
+
     -- clear any flags placed if they are discovered
     for _, flag in pairs(self.Flags) do
         local x, y = flag.X, flag.Y
@@ -427,7 +425,7 @@ function Board:render(renderOptions)
             self:setFlag(x, y, false, nil)
         end
     end
-    
+
     for i, flag in pairs(self.Flags) do
         local x, y = flag.X, flag.Y
         local flagModel = self._render.flags[flag] or flag.Model:Clone()
@@ -442,7 +440,7 @@ end
 
 function Board:renderCursors(cursors)
     assert(_G.Client, "only client need to set cursors for the board")
-    
+
     for ownerID, cursor in pairs(cursors) do
         cursor.HighlightInstance.Transparency = ownerID == Players.LocalPlayer.UserId and 0 or 0.5
         local x, y = cursor.BoardSelectionPosition.X, cursor.BoardSelectionPosition.Y
