@@ -138,26 +138,48 @@ end
 
 local function placeFlag(game, state, tilePos)
     if game.GameState == GameEnum.GameState.InProgress then
-        local tile = tilePos or game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
-        if tile and game.Board:getTile(tile.X, tile.Y) == BOARD_UNDISCOVERED then
-            local isFlagged, flagState = game.Board:isFlagged(tile.X, tile.Y)
+        local tileLocation = tilePos or game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
+        if not tileLocation then return end
+        local tileResult = game.Board:getTile(tileLocation.X, tileLocation.Y)
+
+        if tileLocation and game.Board:getTile(tileLocation.X, tileLocation.Y) == BOARD_UNDISCOVERED then
+            local isFlagged, flagState = game.Board:isFlagged(tileLocation.X, tileLocation.Y)
             if state ~= nil then
                 flagState = state
             else
-                flagState = not game.Board:isFlagged(tile.X, tile.Y)
+                flagState = not game.Board:isFlagged(tileLocation.X, tileLocation.Y)
             end
 
             if flagState ~= isFlagged then
                 if flagState then
                     playSound(game, shared.Assets.Sounds.Flag)
                 end
-                game.Board:setFlag(tile.X, tile.Y, flagState, Players.LocalPlayer)
-                NetworkLib:send(GameEnum.PacketType.SetFlagState, tile.X, tile.Y, flagState)
+                game.Board:setFlag(tileLocation.X, tileLocation.Y, flagState, Players.LocalPlayer)
+                NetworkLib:send(GameEnum.PacketType.SetFlagState, tileLocation.X, tileLocation.Y, flagState)
                 game.Board:render()
             end
-
-
             return flagState
+
+        elseif tileLocation and tileResult > 0 then
+            local tiles = game.Board:getNearbyTiles(tileLocation.X, tileLocation.Y)
+
+            local undiscoveredCount = 0
+            for _, tile in pairs(tiles) do
+                undiscoveredCount = tile.meta == BOARD_UNDISCOVERED and undiscoveredCount + 1 or undiscoveredCount
+            end
+
+            if undiscoveredCount > tileResult then return end
+
+            playSound(game, shared.Assets.Sounds.Flag)
+
+            for _, tile in pairs(tiles) do
+                if tile.meta == BOARD_UNDISCOVERED and not game.Board:isFlagged(tile.X, tile.Y) then
+                    game.Board:setFlag(tile.X, tile.Y, true, Players.LocalPlayer)
+                    NetworkLib:send(GameEnum.PacketType.SetFlagState, tile.X, tile.Y, true)
+                end
+            end
+
+            game.Board:render()
         end
     end
 end
@@ -174,7 +196,9 @@ end
 local function sweep(game, tilePos)
     if game.GameState == GameEnum.GameState.InProgress then
         local tileLocation = tilePos or game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
+        if not tileLocation then return end
         local tileResult = game.Board:getTile(tileLocation.X, tileLocation.Y)
+
         if tileLocation and tileResult == BOARD_UNDISCOVERED and not game.Board:isFlagged(tileLocation.X, tileLocation.Y) then
             playSound(game, shared.Assets.Sounds.Discover)
             game.Board.Discovered[tileLocation.X][tileLocation.Y] = BOARD_PENDING
