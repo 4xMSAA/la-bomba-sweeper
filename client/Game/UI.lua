@@ -13,7 +13,7 @@ UI.StatusBarMessages = {
 
 --TODO: port over UI code from minesweeper client
 function UI.statusBar(text, color)
-    
+
 end
 
 function UI.updateMouseHover()
@@ -30,12 +30,18 @@ function UI.updateMouseHover()
         -- flag info
         if tile and game.Board:isFlagged(tile.X, tile.Y) then
             local flag = game.Board:getFlag(tile.X, tile.Y)
-            flagInfo.DisplayName.Text = flag.Owner.DisplayName
-            flagInfo.DisplayName.TextColor3 = PlayerChatColor(flag.Owner.Name)
-            flagInfo.Visible = flag.Owner == Players.LocalPlayer and false or true
+            if flag.Owner then
+                flagInfo.DisplayName.Text = flag.Owner.DisplayName
+                flagInfo.DisplayName.TextColor3 = PlayerChatColor(flag.Owner.Name)
+                flagInfo.Visible = flag.Owner ~= Players.LocalPlayer
+            else
+                flagInfo.DisplayName.Text = "Disconnected user"
+                flagInfo.DisplayName.TextColor3 = Color3.new(1, 1, 1)
+                flagInfo.Visible = true
+            end
         else
             flagInfo.Visible = false
-        end 
+        end
     else
         flagInfo.Visible = false
     end
@@ -57,7 +63,7 @@ function UI.createMessage(text, color, duration)
     message.Name = text
     message.Parent = messages
     Debris:AddItem(message, duration)
-    
+
 end
 
 
@@ -71,6 +77,6 @@ return function(game)
     UI.Game = game
     UI.Instance = game.Gui
     UI.ScreenInstance = UI.Instance:WaitForChild("Screen")
-    
+
     return UI
 end

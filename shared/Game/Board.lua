@@ -51,7 +51,7 @@ function Board.new(options, renderOptions)
         MineCount = 0,
         StartedAt = os.time(os.date("!*t")),
 
-        _render = {}
+        _render = {ready = false}
     }
 
     for x = 1, self.Options.Size.X do
@@ -433,19 +433,29 @@ function Board:render(renderOptions)
         self._render.flags[flag] = flagModel
 
         flagModel.Parent = part.Instance
-        colorContents(flagModel, Players.LocalPlayer.Name ~= flag.Owner.Name and PlayerChatColor(flag.Owner.Name) or FLAG_DEFAULT_COLOR)
+        if flag.Owner then
+            colorContents(flagModel, Players.LocalPlayer.Name ~= flag.Owner.Name and PlayerChatColor(flag.Owner.Name) or FLAG_DEFAULT_COLOR)
+        else
+            colorContents(flagModel, Color3.new(1,1,1))
+        end
         flagModel:SetPrimaryPartCFrame(part.CFrame * CFrame.new(0, part.Size.Y/2, 0))
     end
+    self._render.ready = true
 end
 
 function Board:renderCursors(cursors)
-    assert(_G.Client, "only client need to set cursors for the board")
+    assert(_G.Client, "only client needs to set cursors for the board")
 
     for ownerID, cursor in pairs(cursors) do
         cursor.HighlightInstance.Transparency = ownerID == Players.LocalPlayer.UserId and 0 or 0.5
         local x, y = cursor.BoardSelectionPosition.X, cursor.BoardSelectionPosition.Y
-        cursor.Color3 = ownerID == Players.LocalPlayer.UserId and SELECTION_HIGHLIGHT_COLOR or PlayerChatColor(owner.Name)
-        cursor.HighlightInstance.Adornee = self._render.parts[x][y].Instance
+        cursor.Color3 = ownerID == Players.LocalPlayer.UserId and SELECTION_HIGHLIGHT_COLOR or cursor.Color
+
+        -- apparently it is 0, 0, perhaps because it's not being replicated from other players. whatever
+        -- it's a dirty hack but it'll do
+        if self._render.parts and self._render.parts[x] and self._render.parts[x][y] then
+            cursor.HighlightInstance.Adornee = self._render.parts[x][y].Instance
+        end
     end
 end
 

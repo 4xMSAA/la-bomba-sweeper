@@ -160,15 +160,17 @@ local function placeFlag(game, state, tilePos)
             end
             return flagState
 
-        elseif tileLocation and tileResult > 0 then
+        elseif tileLocation and tileResult > 0 and state == nil then
             local tiles = game.Board:getNearbyTiles(tileLocation.X, tileLocation.Y)
 
             local undiscoveredCount = 0
+            local flagCount = 0
             for _, tile in pairs(tiles) do
                 undiscoveredCount = tile.meta == BOARD_UNDISCOVERED and undiscoveredCount + 1 or undiscoveredCount
+                flagCount = game.Board:isFlagged(tile.X, tile.Y) and flagCount + 1 or flagCount
             end
 
-            if undiscoveredCount > tileResult then return end
+            if undiscoveredCount > tileResult or undiscoveredCount == 0 or flagCount == undiscoveredCount then return end
 
             playSound(game, shared.Assets.Sounds.Flag)
 
@@ -178,8 +180,9 @@ local function placeFlag(game, state, tilePos)
                     NetworkLib:send(GameEnum.PacketType.SetFlagState, tile.X, tile.Y, true)
                 end
             end
-
             game.Board:render()
+
+            return
         end
     end
 end
@@ -193,7 +196,7 @@ local function moveSelection(game, direction)
     self.Board:renderCursors(self.CursorManager.Cursors)
 end
 
-local function sweep(game, tilePos)
+local function sweep(game, holding, tilePos)
     if game.GameState == GameEnum.GameState.InProgress then
         local tileLocation = tilePos or game.Board:mouseToBoard(game.Client.Mouse.Hit.Position)
         if not tileLocation then return end
@@ -205,7 +208,7 @@ local function sweep(game, tilePos)
             game.Board:render()
             NetworkLib:send(GameEnum.PacketType.Discover, tileLocation.X, tileLocation.Y)
 
-        elseif tileLocation and tileResult > 0 then
+        elseif tileLocation and tileResult > 0 and holding == nil then
             local tiles = game.Board:getNearbyTiles(tileLocation.X, tileLocation.Y)
 
             local flagCount = 0
@@ -215,7 +218,9 @@ local function sweep(game, tilePos)
                 end
             end
 
-            if flagCount < tileResult then return end
+            if flagCount < tileResult or flagCount == 0 then return end
+
+            playSound(game, shared.Assets.Sounds.Discover)
 
             for _, tile in pairs(tiles) do
                 if tile.meta == BOARD_UNDISCOVERED and not game.Board:isFlagged(tile.X, tile.Y) then
@@ -394,7 +399,7 @@ function MinesweeperClient:bindInput()
 
     self._state.Scrolls = 0
     local dragCamera, sweeping = false, false
-    local flaggingState
+    local flaggingState = nil
     local moveDirX = 0
     local moveDirY = 0
 
@@ -409,7 +414,7 @@ function MinesweeperClient:bindInput()
                     Cursor.LocalCursor.Visible = false
                 elseif name == "Discover" then
                     sweeping = true
-                    sweep(self)
+                    sweep(self, nil)
                     Cursor.LocalCursor.Visible = false
                 end
                 if name:match("^Select") then
@@ -431,7 +436,7 @@ function MinesweeperClient:bindInput()
                         placeFlag(self, nil, Cursor.LocalCursor:get())
                     end
                     if name:match("Discover") then
-                       sweep(self, Cursor.LocalCursor:get())
+                       sweep(self, nil, Cursor.LocalCursor:get())
                     end
                     if name:match("PlaceFlagModifier") then
                         if not UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
@@ -481,7 +486,7 @@ function MinesweeperClient:bindInput()
                 placeFlag(self, flaggingState)
             end
             if sweeping then
-                sweep(self)
+                sweep(self, sweeping)
             end
             self.UI.updateMouseHover()
         elseif input.UserInputType == Enum.UserInputType.MouseWheel then
